@@ -1,0 +1,127 @@
+{% extends 'base.html' %}
+{% block title %}Compradores{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 class="mb-0">Compradores potenciales</h3>
+    <a href="{% url 'comprador_nuevo' %}" class="btn btn-primary">+ Nuevo comprador</a>
+</div>
+
+<form method="get" class="card card-body mb-3">
+    <div class="row g-2 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label">Buscar</label>
+            <input type="text" name="q" value="{{ filtros.q }}" class="form-control" placeholder="Empresa, país o sector">
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                {% for value, label in estados %}
+                    <option value="{{ value }}" {% if filtros.estado == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">País</label>
+            <select name="pais" class="form-select">
+                <option value="">Todos</option>
+                {% for p in paises %}
+                    <option value="{{ p }}" {% if filtros.pais == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Sector</label>
+            <select name="sector" class="form-select">
+                <option value="">Todos</option>
+                {% for s in sectores %}
+                    <option value="{{ s }}" {% if filtros.sector == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label">Fuente</label>
+            <select name="fuente" class="form-select">
+                <option value="">Todas</option>
+                {% for value, label in fuentes %}
+                    <option value="{{ value }}" {% if filtros.fuente == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-outline-primary">Filtrar</button>
+        <a href="{% url 'compradores_lista' %}" class="btn btn-outline-secondary">Limpiar</a>
+    </div>
+</form>
+
+<div class="table-responsive">
+    <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+            <tr>
+                <th>Empresa</th>
+                <th>País / Ciudad</th>
+                <th>Sector</th>
+                <th>Fuente</th>
+                <th>Estado</th>
+                <th>Último contacto</th>
+                <th class="text-end">Acciones</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for comprador in page_obj %}
+            <tr>
+                <td>
+                    <a href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_empresa }}</a>
+                </td>
+                <td>{{ comprador.pais }}{% if comprador.ciudad %} / {{ comprador.ciudad }}{% endif %}</td>
+                <td>{{ comprador.sector|default:'—' }}</td>
+                <td>{{ comprador.get_fuente_display }}</td>
+                <td>
+                    <span class="badge badge-estado
+                        {% if comprador.estado == 'cliente' %}bg-success
+                        {% elif comprador.estado == 'interesado' %}bg-info text-dark
+                        {% elif comprador.estado == 'contactado' %}bg-primary
+                        {% elif comprador.estado == 'descartado' %}bg-secondary
+                        {% else %}bg-warning text-dark{% endif %}">
+                        {{ comprador.get_estado_display }}
+                    </span>
+                </td>
+                <td>{{ comprador.fecha_ultimo_contacto|date:'d/m/Y H:i'|default:'Nunca' }}</td>
+                <td class="text-end">
+                    <div class="btn-group btn-group-sm" role="group">
+                        {% if comprador.email %}
+                        <a class="btn btn-outline-primary" href="{{ comprador.mailto_url }}" title="Enviar correo">✉️ Correo</a>
+                        {% endif %}
+                        {% if comprador.whatsapp_url %}
+                        <a class="btn btn-outline-success" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp">📱 WhatsApp</a>
+                        {% endif %}
+                        <form method="post" action="{% url 'comprador_marcar_contactado' comprador.pk %}" class="d-inline">
+                            {% csrf_token %}
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-outline-dark" title="Marcar como contactado">✔ Contactado</button>
+                        </form>
+                    </div>
+                </td>
+            </tr>
+        {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No hay compradores que coincidan con los filtros.</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">Anterior</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">Siguiente</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

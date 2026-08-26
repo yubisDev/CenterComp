@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block title %}{% if comprador %}Editar comprador{% else %}Nuevo comprador{% endif %}{% endblock %}
+{% block content %}
+<h3 class="mb-3">{% if comprador %}Editar comprador{% else %}Nuevo comprador{% endif %}</h3>
+<form method="post" class="card card-body" style="max-width: 720px;">
+    {% csrf_token %}
+    {% for field in form %}
+    <div class="mb-3">
+        <label class="form-label">{{ field.label }}</label>
+        {{ field }}
+        {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+        {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+    </div>
+    {% endfor %}
+    <div>
+        <button type="submit" class="btn btn-primary">Guardar</button>
+        <a href="{% url 'compradores_lista' %}" class="btn btn-outline-secondary">Cancelar</a>
+    </div>
+</form>
+{% endblock %}
