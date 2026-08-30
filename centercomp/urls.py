@@ -2,6 +2,10 @@ from django.contrib import admin
 from django.contrib.auth import views as auth_views
 from django.urls import include, path
 
+admin.site.site_header = 'ISYN — Administración'
+admin.site.site_title = 'ISYN'
+admin.site.index_title = 'Prospección de compradores'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),

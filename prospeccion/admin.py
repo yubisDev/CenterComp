@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Comprador, HistorialContacto, PlantillaMensaje, Producto
+from .models import BusquedaIA, Comprador, HistorialContacto, PlantillaMensaje, Producto
 
 
 class HistorialContactoInline(admin.TabularInline):
@@ -20,9 +20,9 @@ class CompradorAdmin(admin.ModelAdmin):
 
 @admin.register(Producto)
 class ProductoAdmin(admin.ModelAdmin):
-    list_display = ['nombre', 'categoria', 'cantidad_disponible', 'precio_referencia']
-    list_filter = ['categoria']
-    search_fields = ['nombre', 'categoria']
+    list_display = ['nombre', 'categoria', 'proveedor_nombre', 'cantidad_disponible', 'precio_referencia', 'confidencial']
+    list_filter = ['categoria', 'confidencial']
+    search_fields = ['nombre', 'categoria', 'proveedor_nombre', 'referencia']
 
 
 @admin.register(HistorialContacto)
@@ -35,3 +35,9 @@ class HistorialContactoAdmin(admin.ModelAdmin):
 class PlantillaMensajeAdmin(admin.ModelAdmin):
     list_display = ['nombre', 'tipo']
     list_filter = ['tipo']
+
+
+@admin.register(BusquedaIA)
+class BusquedaIAAdmin(admin.ModelAdmin):
+    list_display = ['consulta', 'resultados', 'usuario', 'creado_en']
+    readonly_fields = ['creado_en']

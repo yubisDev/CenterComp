@@ -1,22 +1,26 @@
 {% extends 'base.html' %}
+{% load icons %}
 {% block title %}Plantillas de mensaje{% endblock %}
+{% block page_title %}Plantillas de mensaje{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Usa <code>{ nombre_empresa }</code> y <code>{ producto }</code> para personalizar cada envío</div>{% endblock %}
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-3">
-    <h3 class="mb-0">Plantillas de mensaje</h3>
+<div class="d-flex justify-content-end mb-3">
     <a href="{% url 'plantilla_nueva' %}" class="btn btn-primary">+ Nueva plantilla</a>
 </div>
-<p class="text-muted">Usa variables como <code>{ nombre_empresa }</code> y <code>{ producto }</code> dentro del texto; se reemplazan automáticamente al enviar el mensaje a un comprador. La primera plantilla de cada tipo (correo/WhatsApp) es la que se usa por defecto en los botones de contacto rápido.</p>
 
-<div class="row">
+<div class="row g-3">
 {% for plantilla in plantillas %}
-    <div class="col-md-6 mb-3">
-        <div class="card h-100">
+    <div class="col-md-6">
+        <div class="card card-tpl">
             <div class="card-body">
-                <h5 class="card-title d-flex justify-content-between">
+                <h5 class="card-title d-flex justify-content-between align-items-start">
                     {{ plantilla.nombre }}
-                    <span class="badge bg-secondary">{{ plantilla.get_tipo_display }}</span>
+                    <span class="pill {% if plantilla.tipo == 'whatsapp' %}pill-channel-chat{% else %}pill-channel-mail{% endif %}">
+                        {% if plantilla.tipo == 'whatsapp' %}{% icon 'chat' size=13 %}{% else %}{% icon 'mail' size=13 %}{% endif %}
+                        {{ plantilla.get_tipo_display }}
+                    </span>
                 </h5>
-                {% if plantilla.asunto %}<p class="mb-1"><strong>Asunto:</strong> {{ plantilla.asunto }}</p>{% endif %}
+                {% if plantilla.asunto %}<p class="mb-1"><span class="text-muted-soft">Asunto:</span> {{ plantilla.asunto }}</p>{% endif %}
                 <p class="card-text" style="white-space: pre-wrap;">{{ plantilla.cuerpo }}</p>
                 <a href="{% url 'plantilla_editar' plantilla.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
                 <form method="post" action="{% url 'plantilla_eliminar' plantilla.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar esta plantilla?');">
@@ -27,7 +31,12 @@
         </div>
     </div>
 {% empty %}
-    <p class="text-muted">Aún no hay plantillas. Crea una para personalizar tus mensajes.</p>
+    <div class="col-12">
+        <div class="empty-state">
+            {% icon 'file-text' size=30 %}
+            <p>Aún no hay plantillas. Crea una para personalizar tus mensajes.</p>
+        </div>
+    </div>
 {% endfor %}
 </div>
 {% endblock %}

@@ -5,3 +5,9 @@ db.sqlite3
 staticfiles/
 .env
 media/
+
+# Herramientas locales de Claude Code (no son parte de la app)
+.claude/settings.local.json
+.claude/skills/
+.impeccable/config.local.json
+.impeccable/hook.cache.json

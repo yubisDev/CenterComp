@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load icons %}
+{% block title %}Buscar con IA{% endblock %}
+{% block page_title %}Buscar compradores con IA{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Busca empresas reales en la web y revisa antes de guardarlas en tu pipeline</div>{% endblock %}
+{% block content %}
+
+{% if not ia_configurada %}
+<div class="panel mb-3">
+    <div class="panel-body d-flex align-items-start gap-3">
+        <span class="text-muted-soft">{% icon 'alert' size=22 %}</span>
+        <div>
+            <strong>La búsqueda con IA no está configurada todavía.</strong>
+            <p class="mb-0 text-muted-soft">Falta la variable de entorno <code>GEMINI_API_KEY</code>.</p>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'compradores_buscar_ia_ejecutar' %}" class="filter-bar mb-3" id="formBuscarIA">
+    {% csrf_token %}
+    <label class="form-label d-block">{{ form.consulta.label }}</label>
+    <div class="d-flex gap-2">
+        {{ form.consulta }}
+        <button type="submit" class="btn btn-primary" id="btnBuscarIA" {% if not ia_configurada %}disabled{% endif %}>
+            <span class="btn-buscar-idle">{% icon 'sparkle' size=15 %} Buscar</span>
+            <span class="btn-buscar-loading d-none"><span class="spinner"></span> Buscando…</span>
+        </button>
+    </div>
+    <div class="form-text mt-2" id="textoAyudaIA">Ej. "empresas de electrónica en México", "importadores de audífonos en España"</div>
+</form>
+
+<div class="panel mb-3 d-none" id="avisoCargandoIA">
+    <div class="panel-body d-flex align-items-start gap-3">
+        <span class="spinner spinner-lg text-muted-soft"></span>
+        <div>
+            <strong>Buscando en la web real…</strong>
+            <p class="mb-0 text-muted-soft">Esto suele tardar entre 15 y 40 segundos — la IA está verificando cada empresa con búsquedas reales, no solo generando texto. No cierres ni recargues esta página.</p>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('formBuscarIA')?.addEventListener('submit', function (e) {
+    const input = document.getElementById('id_consulta');
+    if (!input || !input.value.trim()) return;
+    document.getElementById('btnBuscarIA').setAttribute('disabled', 'disabled');
+    document.querySelector('.btn-buscar-idle').classList.add('d-none');
+    document.querySelector('.btn-buscar-loading').classList.remove('d-none');
+    document.getElementById('avisoCargandoIA').classList.remove('d-none');
+    document.getElementById('textoAyudaIA').classList.add('d-none');
+});
+</script>
+
+{% if resultados is not None %}
+<div class="alert alert-warning d-flex align-items-start gap-2">
+    {% icon 'alert' size=18 %}
+    <div>Estos resultados los encontró una IA buscando en la web pública. <strong>Pueden tener errores</strong> — revisa cada uno antes de guardarlo, y verifica el dato de contacto antes de escribirle a alguien.</div>
+</div>
+
+<form method="post" action="{% url 'compradores_buscar_ia_guardar' %}">
+    {% csrf_token %}
+    <div class="table-panel mb-3">
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 2.5rem;">
+                            <input type="checkbox" class="form-check-input" id="seleccionarTodo">
+                        </th>
+                        <th>Empresa</th>
+                        <th>País / Sector</th>
+                        <th>Contacto encontrado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for empresa in resultados %}
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input fila-seleccion" name="seleccion" value="{{ forloop.counter0 }}"></td>
+                        <td>
+                            <strong>{{ empresa.nombre_empresa }}</strong>
+                            {% if empresa.resumen %}<div class="text-muted-soft small">{{ empresa.resumen }}</div>{% endif %}
+                        </td>
+                        <td class="text-muted-soft">{{ empresa.pais }}{% if empresa.ciudad %} · {{ empresa.ciudad }}{% endif %}{% if empresa.sector %}<br>{{ empresa.sector }}{% endif %}</td>
+                        <td>
+                            {% if empresa.email %}<div>{% icon 'mail' size=14 %} {{ empresa.email }}</div>{% endif %}
+                            {% if empresa.telefono %}<div>{% icon 'chat' size=14 %} {{ empresa.telefono }}</div>{% endif %}
+                            {% if empresa.sitio_web %}<div>{% icon 'link' size=14 %} {{ empresa.sitio_web }}</div>{% endif %}
+                            {% if not empresa.email and not empresa.telefono and not empresa.sitio_web %}<span class="text-muted-soft">Sin datos de contacto</span>{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="4">
+                        <div class="empty-state">
+                            {% icon 'inbox' size=30 %}
+                            <p>No se encontraron empresas para esa búsqueda.</p>
+                        </div>
+                    </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if resultados %}
+    <div class="d-flex gap-2 mb-3">
+        <button type="submit" class="btn btn-primary">Guardar seleccionados</button>
+        <button type="submit" formaction="{% url 'compradores_buscar_ia_descartar' %}" class="btn btn-outline-secondary">Descartar todo</button>
+    </div>
+    {% endif %}
+</form>
+
+{% if fuentes %}
+<div class="panel">
+    <div class="panel-body">
+        <h6 class="mb-2">Fuentes consultadas</h6>
+        <ul class="small mb-0">
+            {% for fuente in fuentes %}
+            <li><a href="{{ fuente.url }}" target="_blank" rel="noopener">{{ fuente.titulo|default:fuente.url }}</a></li>
+            {% endfor %}
+        </ul>
+    </div>
+</div>
+{% endif %}
+{% endif %}
+
+<script>
+document.getElementById('seleccionarTodo')?.addEventListener('change', function () {
+    document.querySelectorAll('.fila-seleccion').forEach(function (cb) { cb.checked = this.checked; }.bind(this));
+});
+</script>
+{% endblock %}

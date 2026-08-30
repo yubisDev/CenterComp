@@ -8,7 +8,8 @@ class CompradorForm(forms.ModelForm):
         model = Comprador
         fields = [
             'nombre_empresa', 'pais', 'ciudad', 'sector',
-            'email', 'telefono', 'fuente', 'estado',
+            'email', 'telefono', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
+            'fuente', 'estado',
             'productos_interes', 'notas',
         ]
         widgets = {
@@ -31,15 +32,24 @@ class CompradorForm(forms.ModelForm):
 class ProductoForm(forms.ModelForm):
     class Meta:
         model = Producto
-        fields = ['nombre', 'categoria', 'descripcion', 'cantidad_disponible', 'precio_referencia']
+        fields = [
+            'nombre', 'categoria', 'descripcion', 'cantidad_disponible',
+            'precio_referencia', 'valor_estimado', 'condiciones_venta',
+            'referencia', 'confidencial',
+            'proveedor_nombre', 'proveedor_contacto', 'proveedor_email', 'proveedor_telefono',
+        ]
         widgets = {
             'descripcion': forms.Textarea(attrs={'rows': 3}),
+            'condiciones_venta': forms.Textarea(attrs={'rows': 3}),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for field in self.fields.values():
-            field.widget.attrs['class'] = 'form-control'
+            if isinstance(field.widget, forms.CheckboxInput):
+                field.widget.attrs['class'] = 'form-check-input'
+            else:
+                field.widget.attrs['class'] = 'form-control'
 
 
 class PlantillaMensajeForm(forms.ModelForm):
@@ -78,4 +88,15 @@ class ImportarCompradoresForm(forms.Form):
         label='Archivo CSV o Excel',
         help_text='Columnas esperadas: nombre_empresa, pais, ciudad, sector, email, telefono, fuente',
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.csv,.xlsx,.xls'}),
+    )
+
+
+class BusquedaIAForm(forms.Form):
+    consulta = forms.CharField(
+        label='¿Qué empresas buscamos?',
+        max_length=300,
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'Ej. empresas de electrónica en México',
+        }),
     )

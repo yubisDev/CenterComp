@@ -8,7 +8,31 @@ class Producto(models.Model):
     categoria = models.CharField(max_length=120, blank=True)
     descripcion = models.TextField(blank=True)
     cantidad_disponible = models.PositiveIntegerField(default=0)
-    precio_referencia = models.DecimalField(max_digits=12, decimal_places=2, null=True, blank=True)
+    precio_referencia = models.DecimalField(
+        'Precio de venta (referencia)', max_digits=14, decimal_places=2, null=True, blank=True,
+    )
+    valor_estimado = models.DecimalField(
+        'Valor bruto estimado', max_digits=14, decimal_places=2, null=True, blank=True,
+        help_text='Valuación/tasación del lote, si es distinta al precio de venta (ej. avalúo antes de descuento).',
+    )
+    condiciones_venta = models.TextField(
+        'Condiciones / escenarios de venta', blank=True,
+        help_text='Ej. venta en bloque, venta por categorías, colateral financiero — con sus montos y plazos.',
+    )
+    referencia = models.CharField(
+        'Referencia interna', max_length=100, blank=True,
+        help_text='Código del documento de origen, ej. H11-INV-RCA-001.',
+    )
+    confidencial = models.BooleanField(
+        default=False,
+        help_text='Marca este lote como confidencial (documento de origen restringido a su destinatario).',
+    )
+
+    proveedor_nombre = models.CharField('Proveedor / consignante', max_length=200, blank=True)
+    proveedor_contacto = models.CharField('Persona de contacto', max_length=150, blank=True)
+    proveedor_email = models.EmailField('Correo del proveedor', blank=True)
+    proveedor_telefono = models.CharField('Teléfono del proveedor', max_length=30, blank=True)
+
     creado_en = models.DateTimeField(auto_now_add=True)
     actualizado_en = models.DateTimeField(auto_now=True)
 
@@ -33,6 +57,9 @@ class Comprador(models.Model):
         PROCOLOMBIA = 'procolombia', 'Procolombia'
         CAMARA_COMERCIO = 'camara_comercio', 'Cámara de comercio'
         LINKEDIN = 'linkedin', 'LinkedIn Sales Navigator'
+        IA = 'ia', 'Búsqueda con IA'
+        FACEBOOK_ADS = 'facebook_ads', 'Facebook Ads'
+        INSTAGRAM_ADS = 'instagram_ads', 'Instagram Ads'
         MANUAL = 'manual', 'Manual'
         OTRO = 'otro', 'Otro'
 
@@ -46,6 +73,10 @@ class Comprador(models.Model):
         'Teléfono / WhatsApp', max_length=30, blank=True,
         help_text='Incluir indicativo de país, ej: +57 300 1234567',
     )
+    linkedin_url = models.URLField('LinkedIn', blank=True)
+    facebook_url = models.URLField('Facebook', blank=True)
+    instagram_url = models.URLField('Instagram', blank=True)
+    sitio_web = models.URLField('Sitio web', blank=True)
 
     fuente = models.CharField(max_length=30, choices=Fuente.choices, default=Fuente.MANUAL)
     estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.POR_CONTACTAR)
@@ -141,3 +172,23 @@ class PlantillaMensaje(models.Model):
         asunto = self.asunto.format_map(contexto) if self.asunto else ''
         cuerpo = self.cuerpo.format_map(contexto)
         return asunto, cuerpo
+
+
+class BusquedaIA(models.Model):
+    """Bitácora de cada búsqueda con IA — solo para poder contar cuántas se
+    hicieron hoy y frenar antes de acercarse a la cuota/gasto configurado."""
+
+    consulta = models.CharField(max_length=300)
+    creado_en = models.DateTimeField(auto_now_add=True)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    resultados = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-creado_en']
+        verbose_name = 'Búsqueda con IA'
+        verbose_name_plural = 'Búsquedas con IA'
+
+    def __str__(self):
+        return f'{self.consulta} ({self.creado_en:%Y-%m-%d %H:%M})'

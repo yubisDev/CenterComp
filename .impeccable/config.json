@@ -1,0 +1,26 @@
+{
+  "detector": {
+    "ignoreRules": [],
+    "ignoreFiles": [],
+    "ignoreValues": [
+      {
+        "rule": "overused-font",
+        "value": "inter",
+        "createdAt": "2026-08-26T18:23:55.309Z",
+        "reason": "Operate-mode surface (dashboard/CRM): operate.md explicitly sanctions system fonts and familiar sans defaults over distinctive display faces; Inter is purpose-built for dense UI/data-table legibility, which this surface needs"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(14,165,160,.16)",
+        "createdAt": "2026-08-26T18:44:38.213Z",
+        "reason": "Login-only decorative radial gradient reusing the already-documented info-500/teal brand-mark accent at low opacity (18%% for indigo, 16%% for teal, same pair as the sidebar logo mark) -- not a new color, just a softer tint of an existing one, documented in DESIGN.md under Navigation > Pantalla de login"
+      },
+      {
+        "rule": "design-system-color",
+        "value": "rgba(14,165,160,.22)",
+        "createdAt": "2026-08-26T19:28:46.028Z",
+        "reason": "Sidebar background glow, same indigo/teal brand-mark pair documented as 'La Regla del Resplandor de Marca' in DESIGN.md > Components > Navigation -- each dark surface (sidebar, login) reuses the pair at its own tuned opacity, not a new color"
+      }
+    ]
+  }
+}

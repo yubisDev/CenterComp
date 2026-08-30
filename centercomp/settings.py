@@ -107,10 +107,13 @@ USE_I18N = True
 
 USE_TZ = True
 
+USE_THOUSAND_SEPARATOR = True
+
 
 # Static files (CSS, JavaScript, Images)
 
 STATIC_URL = 'static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 STORAGES = {
     'staticfiles': {
@@ -129,3 +132,7 @@ MESSAGE_TAGS = {
 LOGIN_URL = 'login'
 LOGIN_REDIRECT_URL = 'compradores_lista'
 LOGOUT_REDIRECT_URL = 'login'
+
+# Búsqueda de compradores con IA (Gemini + Google Search grounding)
+GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
+BUSQUEDA_IA_LIMITE_DIARIO = int(os.environ.get('BUSQUEDA_IA_LIMITE_DIARIO', '20'))

@@ -2,6 +2,7 @@ import csv
 import io
 from urllib.parse import quote
 
+from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.paginator import Paginator
@@ -12,14 +13,17 @@ from django.urls import reverse
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
+from . import ia_busqueda
 from .forms import (
+    BusquedaIAForm,
     CompradorForm,
     HistorialContactoForm,
     ImportarCompradoresForm,
     PlantillaMensajeForm,
     ProductoForm,
 )
-from .models import Comprador, HistorialContacto, PlantillaMensaje, Producto
+from .models import BusquedaIA, Comprador, HistorialContacto, PlantillaMensaje, Producto
+from .texto import titulo_inteligente
 
 FUENTE_ALIASES = {
     'hunter': Comprador.Fuente.HUNTER,
@@ -64,11 +68,22 @@ def _construir_mensaje(comprador):
     return asunto, cuerpo_email, cuerpo_whatsapp
 
 
+ETAPA_INDICE = {
+    Comprador.Estado.POR_CONTACTAR: 0,
+    Comprador.Estado.CONTACTADO: 1,
+    Comprador.Estado.INTERESADO: 2,
+    Comprador.Estado.CLIENTE: 3,
+}
+
+
 def _enriquecer(comprador):
     asunto, cuerpo_email, cuerpo_whatsapp = _construir_mensaje(comprador)
     comprador.mailto_url = f'mailto:{comprador.email}?subject={quote(asunto)}&body={quote(cuerpo_email)}'
     numero = comprador.whatsapp_numero
     comprador.whatsapp_url = f'https://wa.me/{numero}?text={quote(cuerpo_whatsapp)}' if numero else ''
+    comprador.es_internacional = bool(comprador.pais) and comprador.pais != 'Colombia'
+    comprador.etapa_indice = ETAPA_INDICE.get(comprador.estado)
+    comprador.es_descartado = comprador.estado == Comprador.Estado.DESCARTADO
     return comprador
 
 
@@ -106,6 +121,26 @@ def compradores_lista(request):
     querystring = request.GET.copy()
     querystring.pop('page', None)
 
+    querystring_sin_estado = querystring.copy()
+    querystring_sin_estado.pop('estado', None)
+
+    todos = Comprador.objects.all()
+    total = todos.count()
+    conteos = {
+        valor: todos.filter(estado=valor).count()
+        for valor, _ in Comprador.Estado.choices
+    }
+    embudo = []
+    for valor, etiqueta in Comprador.Estado.choices:
+        cantidad = conteos.get(valor, 0)
+        embudo.append({
+            'valor': valor,
+            'etiqueta': etiqueta,
+            'cantidad': cantidad,
+            'pct': round(cantidad / total * 100) if total else 0,
+            'activo': estado == valor,
+        })
+
     context = {
         'page_obj': page_obj,
         'estados': Comprador.Estado.choices,
@@ -114,6 +149,9 @@ def compradores_lista(request):
         'sectores': sectores,
         'filtros': {'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente},
         'querystring': querystring.urlencode(),
+        'querystring_sin_estado': querystring_sin_estado.urlencode(),
+        'total_compradores': total,
+        'embudo': embudo,
     }
     return render(request, 'prospeccion/compradores_lista.html', context)
 
@@ -238,6 +276,7 @@ def _procesar_importacion(archivo):
         if not nombre_empresa:
             errores.append(f'Fila {i}: falta nombre_empresa, se omitió.')
             continue
+        nombre_empresa = titulo_inteligente(nombre_empresa)
 
         fuente_raw = (fila.get('fuente') or '').strip().lower()
         fuente = FUENTE_ALIASES.get(fuente_raw, Comprador.Fuente.MANUAL)
@@ -257,11 +296,128 @@ def _procesar_importacion(archivo):
             sector=fila.get('sector') or fila.get('industria') or '',
             email=email,
             telefono=fila.get('telefono') or fila.get('teléfono') or fila.get('whatsapp') or '',
+            linkedin_url=fila.get('linkedin') or '',
+            facebook_url=fila.get('facebook') or '',
+            instagram_url=fila.get('instagram') or '',
+            sitio_web=fila.get('sitio_web') or fila.get('web') or fila.get('website') or '',
             fuente=fuente,
         )
         creados += 1
 
     return {'creados': creados, 'errores': errores}
+
+
+# --- Búsqueda de compradores con IA ---
+
+@login_required
+def compradores_buscar_ia(request):
+    form = BusquedaIAForm(initial={'consulta': request.session.get('ia_consulta', '')})
+    context = {
+        'form': form,
+        'resultados': request.session.get('ia_resultados'),
+        'fuentes': request.session.get('ia_fuentes', []),
+        'consulta_previa': request.session.get('ia_consulta', ''),
+        'ia_configurada': bool(settings.GEMINI_API_KEY),
+    }
+    return render(request, 'prospeccion/compradores_buscar_ia.html', context)
+
+
+@login_required
+@require_POST
+def compradores_buscar_ia_ejecutar(request):
+    form = BusquedaIAForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, 'Escribe qué quieres buscar.')
+        return redirect('compradores_buscar_ia')
+
+    consulta = form.cleaned_data['consulta']
+
+    hoy = timezone.localdate()
+    busquedas_hoy = BusquedaIA.objects.filter(creado_en__date=hoy).count()
+    if busquedas_hoy >= settings.BUSQUEDA_IA_LIMITE_DIARIO:
+        messages.error(
+            request,
+            f'Ya se hicieron {busquedas_hoy} búsquedas con IA hoy '
+            f'(tope diario: {settings.BUSQUEDA_IA_LIMITE_DIARIO}). Intenta de nuevo mañana.',
+        )
+        return redirect('compradores_buscar_ia')
+
+    try:
+        empresas, fuentes = ia_busqueda.buscar_empresas(consulta)
+    except ia_busqueda.BusquedaIAError as exc:
+        messages.error(request, str(exc))
+        return redirect('compradores_buscar_ia')
+
+    BusquedaIA.objects.create(consulta=consulta, usuario=request.user, resultados=len(empresas))
+
+    request.session['ia_resultados'] = empresas
+    request.session['ia_consulta'] = consulta
+    request.session['ia_fuentes'] = fuentes
+
+    if not empresas:
+        messages.warning(request, 'La IA no encontró empresas para esa búsqueda. Prueba con otros términos.')
+    else:
+        messages.success(request, f'Se encontraron {len(empresas)} empresas. Revísalas antes de guardarlas.')
+    return redirect('compradores_buscar_ia')
+
+
+@login_required
+@require_POST
+def compradores_buscar_ia_guardar(request):
+    resultados = request.session.get('ia_resultados') or []
+    seleccionados = request.POST.getlist('seleccion')
+
+    creados = 0
+    for indice in seleccionados:
+        try:
+            item = resultados[int(indice)]
+        except (ValueError, IndexError, TypeError):
+            continue
+
+        nombre_empresa = item.get('nombre_empresa')
+        if not nombre_empresa:
+            continue
+
+        existente = None
+        if item.get('email'):
+            existente = Comprador.objects.filter(
+                nombre_empresa__iexact=nombre_empresa, email__iexact=item['email'],
+            ).first()
+        if existente:
+            continue
+
+        notas = 'Encontrado con búsqueda de IA — verificar antes de contactar.'
+        if item.get('resumen'):
+            notas += f"\n{item['resumen']}"
+
+        Comprador.objects.create(
+            nombre_empresa=nombre_empresa,
+            pais=item.get('pais', ''),
+            ciudad=item.get('ciudad', ''),
+            sector=item.get('sector', ''),
+            email=item.get('email', ''),
+            telefono=item.get('telefono', ''),
+            sitio_web=item.get('sitio_web', ''),
+            fuente=Comprador.Fuente.IA,
+            notas=notas,
+        )
+        creados += 1
+
+    request.session.pop('ia_resultados', None)
+    request.session.pop('ia_consulta', None)
+    request.session.pop('ia_fuentes', None)
+
+    messages.success(request, f'Se guardaron {creados} compradores nuevos.')
+    return redirect('compradores_lista')
+
+
+@login_required
+@require_POST
+def compradores_buscar_ia_descartar(request):
+    request.session.pop('ia_resultados', None)
+    request.session.pop('ia_consulta', None)
+    request.session.pop('ia_fuentes', None)
+    return redirect('compradores_buscar_ia')
 
 
 # --- Productos ---
@@ -270,9 +426,31 @@ def _procesar_importacion(archivo):
 def productos_lista(request):
     productos = Producto.objects.all()
     q = request.GET.get('q', '').strip()
+    categoria = request.GET.get('categoria', '')
     if q:
-        productos = productos.filter(Q(nombre__icontains=q) | Q(categoria__icontains=q))
-    return render(request, 'prospeccion/productos_lista.html', {'productos': productos, 'q': q})
+        productos = productos.filter(
+            Q(nombre__icontains=q) | Q(categoria__icontains=q) | Q(referencia__icontains=q)
+        )
+    if categoria:
+        productos = productos.filter(categoria=categoria)
+
+    categorias = Producto.objects.exclude(categoria='').values_list('categoria', flat=True).distinct().order_by('categoria')
+
+    paginator = Paginator(productos, 50)
+    page_obj = paginator.get_page(request.GET.get('page'))
+
+    querystring = request.GET.copy()
+    querystring.pop('page', None)
+
+    context = {
+        'page_obj': page_obj,
+        'total_productos': paginator.count,
+        'q': q,
+        'categoria': categoria,
+        'categorias': categorias,
+        'querystring': querystring.urlencode(),
+    }
+    return render(request, 'prospeccion/productos_lista.html', context)
 
 
 @login_required

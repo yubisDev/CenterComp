@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-08-30T00:00:00Z",
+  "title": "Design System: ISYN",
+  "extensions": {
+    "colorMeta": {
+      "isyn-azul": { "role": "primary", "displayName": "Azul ISYN", "canonical": "#046cb3", "tonalRamp": ["#012238", "#013a5c", "#014b72", "#025d8f", "#046cb3", "#2b87c6", "#6ba9d6", "#b8d6ec"] },
+      "esmeralda-ganada": { "role": "secondary", "displayName": "Esmeralda Ganada", "canonical": "#10b981", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#6ee7b7", "#d1fae5"] },
+      "ink-900": { "role": "neutral", "displayName": "Ink 900 (sidebar)", "canonical": "#1a1a1a", "tonalRamp": ["#0d0d0d", "#1a1a1a", "#262626", "#404040", "#595959", "#737373", "#a3a3a3", "#d4d4d4"] },
+      "canvas": { "role": "neutral", "displayName": "Lienzo", "canonical": "#fafafa", "tonalRamp": ["#e5e5e5", "#ececec", "#f2f2f2", "#f5f5f5", "#fafafa", "#fbfbfb", "#fdfdfd", "#ffffff"] },
+      "danger": { "role": "neutral", "displayName": "Rojo destructivo (solo eliminar)", "canonical": "#ef4444", "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"] }
+    },
+    "typographyMeta": {
+      "display": { "displayName": "Título de página", "purpose": "Encabezado del topbar en cada pantalla. Único lugar con peso 650 a este tamaño." },
+      "body": { "displayName": "Cuerpo", "purpose": "Texto base, formularios, celdas de tabla con contenido descriptivo." },
+      "label": { "displayName": "Etiqueta", "purpose": "Encabezados de columna, filtros, etiquetas de medidor de etapa. Mayúsculas, tracking abierto." }
+    },
+    "shadows": [
+      { "name": "shadow-card", "value": "0 1px 2px rgba(26,26,26,.04), 0 8px 24px -12px rgba(26,26,26,.12)", "purpose": "Única sombra del sistema. Paneles, tabla, barra de filtros — todo lo que flota sobre el lienzo la usa igual." }
+    ],
+    "motion": [
+      { "name": "ease-standard", "value": "0.12s-0.2s ease", "purpose": "Transiciones de color/fondo en hover y el deslizamiento del sidebar móvil. Sin easing elaborado; el sistema no tiene un momento de animación con protagonismo propio." }
+    ],
+    "breakpoints": [
+      { "name": "mobile", "value": "860px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Acción principal de cada pantalla (+ Nuevo comprador, Guardar, Buscar).",
+      "html": "<button class=\"ds-btn-primary\">+ Nuevo comprador</button>",
+      "css": ".ds-btn-primary { background: #046cb3; color: #fff; font-weight: 600; font-size: .85rem; padding: .5rem 1rem; border-radius: 10px; border: none; transition: background .12s ease; } .ds-btn-primary:hover { background: #014b72; } .ds-btn-primary:focus-visible { outline: 2px solid #6ba9d6; outline-offset: 2px; }"
+    },
+    {
+      "name": "Icon Button — Mail",
+      "kind": "button",
+      "refersTo": "icon-button-mail-hover",
+      "description": "Acción rápida de correo en la fila de un comprador. Fantasma por defecto, se tiñe de Azul ISYN (progreso) solo en hover.",
+      "html": "<button class=\"ds-icon-btn ds-icon-btn-mail\" aria-label=\"Enviar correo\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"1.5\"/><path d=\"M3.2 5.5 10 11l6.8-5.5\"/></svg></button>",
+      "css": ".ds-icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e5e5e5; background: #fff; color: #737373; transition: background .12s ease, color .12s ease, border-color .12s ease; } .ds-icon-btn-mail:hover, .ds-icon-btn-mail:focus-visible { background: #eff6fb; color: #014b72; border-color: #b8d6ec; }"
+    },
+    {
+      "name": "Icon Button — WhatsApp",
+      "kind": "button",
+      "refersTo": "icon-button-chat-hover",
+      "description": "Acción rápida de WhatsApp. Se tiñe de esmeralda (canal más cercano a un cierre ganado) solo en hover — nunca por defecto.",
+      "html": "<button class=\"ds-icon-btn ds-icon-btn-chat\" aria-label=\"Contactar por WhatsApp\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9.8c0-3.7 3.1-6.6 7-6.6s7 3 7 6.6-3.1 6.6-7 6.6c-1 0-2-.2-2.9-.6L3.5 17l1-3.4A6.3 6.3 0 0 1 3 9.8Z\"/></svg></button>",
+      "css": ".ds-icon-btn-chat { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e5e5e5; background: #fff; color: #737373; transition: background .12s ease, color .12s ease, border-color .12s ease; } .ds-icon-btn-chat:hover, .ds-icon-btn-chat:focus-visible { background: #d1fae5; color: #065f46; border-color: #10b981; }"
+    },
+    {
+      "name": "Stage Meter",
+      "kind": "custom",
+      "refersTo": "stage-meter",
+      "description": "Componente de firma del sistema. Reemplaza el semáforo de estados: una barra de una sola tonalidad que se llena proporcional al avance del prospecto, más el texto siempre visible. El esmeralda solo aparece al 100% (Cliente).",
+      "html": "<span class=\"ds-stage\"><span class=\"ds-stage-track\"><span class=\"ds-stage-fill\" style=\"width:75%\"></span></span><span class=\"ds-stage-label\">Interesado</span></span>",
+      "css": ".ds-stage { display: inline-flex; align-items: center; gap: .55rem; } .ds-stage-track { width: 44px; height: 6px; border-radius: 999px; background: #f2f2f2; overflow: hidden; } .ds-stage-fill { height: 100%; border-radius: 999px; background: #046cb3; } .ds-stage-label { font-size: .78rem; font-weight: 650; color: #404040; }"
+    },
+    {
+      "name": "Tag — Neutral",
+      "kind": "chip",
+      "refersTo": "tag-neutral",
+      "description": "Categoría descriptiva (sector, categoría de producto). Fondo plano, completamente redondeado, sin borde.",
+      "html": "<span class=\"ds-tag\">Electrónica de consumo</span>",
+      "css": ".ds-tag { display: inline-flex; align-items: center; padding: .28rem .65rem; border-radius: 999px; font-size: .74rem; font-weight: 650; background: #f2f2f2; color: #737373; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input-text",
+      "description": "Campo de texto estándar, usado en formularios y en el buscador (con ícono incrustado).",
+      "html": "<div class=\"ds-search-field\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-search-icon\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M16.5 16.5 13 13\"/></svg><input class=\"ds-input\" type=\"text\" placeholder=\"Empresa, país o sector\"></div>",
+      "css": ".ds-search-field { position: relative; } .ds-search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: #a3a3a3; } .ds-input { width: 100%; border: 1px solid #e5e5e5; border-radius: 10px; padding: .5rem .75rem .5rem 2.15rem; font-size: .875rem; background: #fff; color: #262626; } .ds-input:focus { outline: none; border-color: #6ba9d6; box-shadow: 0 0 0 3px #eff6fb; }"
+    },
+    {
+      "name": "Sidebar Nav Link",
+      "kind": "nav",
+      "refersTo": "sidebar-nav-link",
+      "description": "Enlace de navegación principal. Fondo Azul ISYN sólido cuando está activo — el único lugar donde el acento cubre un área grande.",
+      "html": "<a class=\"ds-nav-link ds-nav-link-active\" href=\"#\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5\"/></svg> Compradores</a>",
+      "css": ".ds-nav-link { display: flex; align-items: center; gap: .65rem; padding: .6rem .75rem; border-radius: 10px; color: rgba(255,255,255,.68); font-weight: 500; font-size: .875rem; text-decoration: none; transition: background .12s ease, color .12s ease; } .ds-nav-link:hover { background: rgba(255,255,255,.06); color: #fff; } .ds-nav-link-active { background: #046cb3; color: #fff; }"
+    },
+    {
+      "name": "Brand Mark",
+      "kind": "custom",
+      "refersTo": "sidebar-brand",
+      "description": "Logo real de ISYN (asset del cliente, sin fondo transparente) en una placa blanca redondeada sobre el sidebar oscuro. Nunca un logo recreado o aproximado.",
+      "html": "<a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-mark\"><img src=\"/static/img/isyn-logo.png\" alt=\"ISYN\"></span></a>",
+      "css": ".ds-brand { display: flex; justify-content: center; padding: 1.5rem 1.25rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.08); } .ds-brand-mark { width: 100%; max-width: 188px; background: #fff; border-radius: 10px; padding: .6rem .8rem; box-shadow: 0 1px 2px rgba(26,26,26,.04), 0 8px 24px -12px rgba(26,26,26,.12); } .ds-brand-mark img { width: 100%; height: auto; display: block; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "El Tablero de Despacho",
+    "overview": "Este CRM se piensa como el tablero de una oficina de despacho de subastas, licitaciones y negocios internacionales: nada decorativo, cada marca en el tablero significa algo concreto, y quien lo opera es una persona de ventas o comercio exterior, no un diseñador — nunca debe detenerse a interpretar qué significa un color. La información se organiza por intensidad de una sola tonalidad, no por un código de colores que hay que memorizar.\n\nEl sistema usa como único acento el Azul ISYN — sacado directamente del logo real de la marca — para todo lo que es progreso o acción. El resto es una escala neutra de grises, también tomada del gris del logo. La única excepción ganada es el esmeralda, reservado estrictamente para el momento en que algo se cierra a favor: un comprador que llega a \"Cliente\", el canal de WhatsApp. No hay una tercera familia de color por decoración.\n\nConfirmado explícitamente por el usuario: el carácter es preciso y sin fricción, no cálido. El cliente real de este proyecto es ISYN (Internacional de Subastas y Negocios), una empresa panameña de subastas y negocios internacionales; el producto llevaba antes el nombre provisional \"CenterComp\", ya retirado de toda superficie visible. El sistema construido bajo ese nombre se conservó íntegro — solo se re-coloreó con la paleta real de ISYN, sampleada por color exacto de píxel del logo entregado por el cliente.",
+    "keyCharacteristics": [
+      "Un solo acento de color (Azul ISYN, sampleado del logo real) para toda acción/progreso; el esmeralda es una excepción con significado, no un color más",
+      "Escala neutra tomada del gris real del logo de ISYN, que hace la mayor parte del trabajo visual",
+      "Iconografía dibujada en trazo consistente, nunca emoji",
+      "Densidad alta a propósito — la tabla es el producto",
+      "Tipografía única (Inter) en todo el sistema; sin par display/body",
+      "El logo de marca es siempre el asset real del cliente, nunca una recreación"
+    ],
+    "rules": [
+      { "name": "La Regla de la Excepción Única", "body": "Solo hay un color con significado especial fuera de la escala de progreso Azul ISYN: esmeralda para lo ganado. Ningún otro estado, categoría o acción recibe un color propio.", "section": "colors" },
+      { "name": "La Regla del No-Semáforo", "body": "El estado de un prospecto nunca se comunica con una paleta roja/ámbar/verde. Se comunica con cuánto se llenó un medidor de una sola tonalidad, más el texto.", "section": "colors" },
+      { "name": "La Regla de la Familia Única", "body": "Ninguna pantalla introduce una segunda familia tipográfica. La jerarquía se construye con peso y tamaño.", "section": "typography" },
+      { "name": "La Regla de la Sombra Única", "body": "Solo existe un valor de sombra en todo el sistema. La jerarquía la da el color y la tipografía, no la profundidad.", "section": "elevation" },
+      { "name": "La Regla del Resplandor de Marca", "body": "Toda superficie oscura del producto (sidebar, login) lleva el mismo resplandor: dos degradados radiales tenues en el par Azul/Marino ISYN, nunca un color nuevo. Ninguna superficie oscura es un relleno plano sin ese resplandor.", "section": "colors" },
+      { "name": "La Regla del Logo Real", "body": "El logo de marca es siempre el asset real entregado por ISYN, nunca una recreación o aproximación. Si el archivo cambia, se reemplaza el archivo — nunca se dibuja un sustituto.", "section": "components" }
+    ],
+    "dos": [
+      "Do usar Azul ISYN para todo lo que sea progreso o acción, en cualquier intensidad de su rampa de tinte.",
+      "Do reservar esmeralda exclusivamente para un cierre ganado (Cliente, WhatsApp) — nunca para \"positivo\" en general.",
+      "Do acompañar siempre el color de estado con texto — nunca solo color.",
+      "Do dibujar íconos propios en SVG de trazo consistente (stroke-width: 1.6, sin relleno).",
+      "Do usar radio 999px solo en medidores, tracks y tags — nunca en contenedores de contenido.",
+      "Do usar siempre el archivo de logo real de ISYN, nunca una recreación."
+    ],
+    "donts": [
+      "Don't introducir un tercer color con significado de estado.",
+      "Don't usar emoji como ícono en ningún lugar del producto.",
+      "Don't usar azul genérico de Bootstrap para acciones que no son la acción primaria de la pantalla.",
+      "Don't agregar una segunda familia tipográfica \"de marca\".",
+      "Don't introducir tarjetas de métrica tipo \"número grande + etiqueta\" sin una función real.",
+      "Don't referirse al producto como \"CenterComp\" en ninguna superficie visible."
+    ]
+  }
+}

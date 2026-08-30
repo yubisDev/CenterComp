@@ -1,38 +1,47 @@
 {% extends 'base.html' %}
 {% block title %}Importar compradores{% endblock %}
+{% block page_title %}Importar compradores{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Carga masiva desde CSV o Excel (Procolombia, cámaras de comercio, LinkedIn Sales Navigator, Apollo)</div>{% endblock %}
 {% block content %}
-<h3 class="mb-3">Importar compradores</h3>
-<div class="row">
+<div class="row g-3">
     <div class="col-md-6">
-        <form method="post" enctype="multipart/form-data" class="card card-body">
-            {% csrf_token %}
-            <div class="mb-3">
-                <label class="form-label">{{ form.archivo.label }}</label>
-                {{ form.archivo }}
-                <div class="form-text">{{ form.archivo.help_text }}</div>
-                {% for error in form.archivo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+        <div class="panel">
+            <div class="panel-body">
+                <form method="post" enctype="multipart/form-data">
+                    {% csrf_token %}
+                    <div class="mb-3">
+                        <label class="form-label">{{ form.archivo.label }}</label>
+                        {{ form.archivo }}
+                        <div class="form-text">{{ form.archivo.help_text }}</div>
+                        {% for error in form.archivo.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-primary">Importar</button>
+                </form>
             </div>
-            <button type="submit" class="btn btn-primary">Importar</button>
-        </form>
+        </div>
 
-        <div class="card card-body mt-3">
-            <h6>Columnas esperadas</h6>
-            <p class="small text-muted mb-1">Obligatoria: <code>nombre_empresa</code></p>
-            <p class="small text-muted mb-0">Opcionales: <code>pais</code>, <code>ciudad</code>, <code>sector</code>, <code>email</code>, <code>telefono</code>, <code>fuente</code> (hunter, apollo, procolombia, camara_comercio, linkedin, manual)</p>
+        <div class="panel mt-3">
+            <div class="panel-body">
+                <h6 class="mb-2">Columnas esperadas</h6>
+                <p class="small text-muted-soft mb-1">Obligatoria: <code>nombre_empresa</code></p>
+                <p class="small text-muted-soft mb-0">Opcionales: <code>pais</code>, <code>ciudad</code>, <code>sector</code>, <code>email</code>, <code>telefono</code>, <code>linkedin</code>, <code>facebook</code>, <code>instagram</code>, <code>sitio_web</code>, <code>fuente</code> (hunter, apollo, procolombia, camara_comercio, linkedin, manual)</p>
+            </div>
         </div>
     </div>
 
     {% if resumen %}
     <div class="col-md-6">
-        <div class="card card-body">
-            <h5>Resultado de la importación</h5>
-            <p><strong>{{ resumen.creados }}</strong> compradores creados.</p>
-            {% if resumen.errores %}
-            <p class="text-danger">Filas con problemas:</p>
-            <ul class="small">
-                {% for e in resumen.errores %}<li>{{ e }}</li>{% endfor %}
-            </ul>
-            {% endif %}
+        <div class="panel">
+            <div class="panel-body">
+                <h5 class="mb-2">Resultado de la importación</h5>
+                <p><strong>{{ resumen.creados }}</strong> compradores creados.</p>
+                {% if resumen.errores %}
+                <p class="text-danger mb-1">Filas con problemas:</p>
+                <ul class="small mb-0">
+                    {% for e in resumen.errores %}<li>{{ e }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+            </div>
         </div>
     </div>
     {% endif %}
