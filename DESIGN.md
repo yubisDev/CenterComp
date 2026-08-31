@@ -9,6 +9,14 @@ colors:
   esmeralda-ganada: "#10b981"
   esmeralda-ganada-deep: "#065f46"
   esmeralda-ganada-soft: "#d1fae5"
+  side-bg-top: "#faf3e6"
+  side-bg-bottom: "#f1e2c8"
+  side-ink: "#35281b"
+  side-ink-soft: "#6b5643"
+  side-border: "#e7d7b8"
+  side-accent: "#b54a26"
+  side-accent-deep: "#8f3a1d"
+  side-accent-soft: "#f0d7bd"
   ink-900: "#1a1a1a"
   text-primary: "#262626"
   text-secondary: "#595959"
@@ -130,12 +138,14 @@ Este CRM se piensa como el tablero de una oficina de despacho — de subastas, l
 
 El sistema usa como único acento el **azul de ISYN**, sacado directamente del logo real de la marca — para todo lo que es progreso o acción. El resto es una escala neutra de grises, también tomada del gris del logo. La única excepción ganada es el esmeralda, reservado estrictamente para el momento en que algo se cierra a favor: un comprador que llega a "Cliente", el canal de WhatsApp (el camino más directo hacia ese cierre). No hay una tercera familia de color por decoración; cuando algo no es progreso ni un cierre ganado, es neutro.
 
-Confirmado explícitamente por el usuario: el carácter es **preciso y sin fricción**, no cálido — cada elemento existe para que una persona encuentre y contacte un prospecto más rápido, no para transmitir cercanía a través de la forma. La densidad de la tabla, la escala tipográfica ajustada, y la ausencia de decoración son deliberadas. Este carácter se mantuvo al adoptar la marca de ISYN — no se reblandeció el sistema para "verse más cálido" solo porque cambió la paleta.
+Confirmado explícitamente por el usuario: el carácter del **área de trabajo** (tabla, formularios, paneles — todo lo que vive a la derecha del sidebar) es **preciso y sin fricción**, no cálido — cada elemento existe para que una persona encuentre y contacte un prospecto más rápido, no para transmitir cercanía a través de la forma. La densidad de la tabla, la escala tipográfica ajustada, y la ausencia de decoración son deliberadas. Este carácter se mantuvo al adoptar la marca de ISYN — no se reblandeció el sistema para "verse más cálido" solo porque cambió la paleta.
+
+**Pivote confirmado (sidebar):** en una sesión posterior el usuario pidió explícitamente que el sidebar dejara de sentirse "genérico" y se volviera cálido, minimalista y llamativo. Esto es un cambio de dirección real, no un descuido — ver la Regla del Rincón Cálido más abajo. El sidebar es ahora la única superficie del sistema con su propia paleta e identidad cromática, deliberadamente distinta del azul funcional del área de trabajo; el resto del carácter "preciso y sin fricción" descrito arriba sigue intacto en todo lo demás.
 
 **Rebrand confirmado:** el cliente real de este proyecto es **ISYN (Internacional de Subastas y Negocios)**, una empresa panameña de subastas, licitaciones y negocios internacionales (isynsubastas.com). El producto llevaba antes el nombre provisional "CenterComp"; ese nombre queda retirado de toda superficie visible. El sistema de diseño construido bajo ese nombre (medidor de etapa, fila de contacto, regla de la sombra única, etc.) se conservó íntegro — solo se re-coloreó con la paleta real de ISYN, extraída por muestreo directo del archivo de logo entregado por el cliente.
 
 **Key Characteristics:**
-- Un solo acento de color (Azul ISYN) para toda acción/progreso; el esmeralda es una excepción con significado, no un color más
+- Un solo acento de color (Azul ISYN) para toda acción/progreso en el área de trabajo; el esmeralda es una excepción con significado, no un color más. El sidebar vive aparte, en su propio mundo cálido (terracota) — ver Regla del Rincón Cálido
 - Escala neutra tomada del gris real del logo de ISYN, que hace la mayor parte del trabajo visual
 - Iconografía dibujada en trazo consistente, nunca emoji
 - Densidad alta a propósito — la tabla es el producto, no un elemento decorativo alrededor de ella
@@ -154,8 +164,17 @@ La paleta viene directamente del logo de ISYN — no fue inventada ni elegida po
 - **Esmeralda Ganada** (`#10b981`): reservado, sin excepción, para lo que ya se ganó — el estado "Cliente" al 100% del medidor de etapa, y el canal de WhatsApp (el atajo más directo a ese cierre). No es un color de ISYN; es una excepción funcional universal (éxito/dinero) que se mantiene aparte de la identidad de marca a propósito — ver la Regla de la Excepción Única.
 - **Esmeralda Ganada Profundo** (`#065f46`): texto sobre fondos esmeralda claros (tags, hover de botón de WhatsApp).
 
+### Sidebar (mundo cálido — ver Regla del Rincón Cálido)
+Paleta propia, aparte de la marca ISYN, usada exclusivamente dentro del sidebar. No aparece en ningún otro lugar del sistema.
+- **Fondo** (`#faf3e6` → `#f1e2c8`): degradado vertical muy sutil, arena/lino cálido — reemplaza el sidebar oscuro original.
+- **Terracota** (`#b54a26`, hover/profundo `#8f3a1d`): único acento del sidebar. Enlace de navegación activo (relleno sólido, texto blanco).
+- **Terracota suave** (`#f0d7bd`): fondo de hover en enlaces inactivos.
+- **Tinta cálida** (`#35281b`): texto de los enlaces de navegación y el nombre de usuario — un café oscuro, no un gris neutro, para que el texto pertenezca a la misma familia de color que el fondo.
+- **Tinta cálida suave** (`#6b5643`): pie del sidebar (usuario, botón de cerrar sesión).
+- **Borde cálido** (`#e7d7b8`): línea divisoria bajo el logo y sobre el pie, borde de la placa del logo.
+
 ### Neutral
-- **Ink 900** (`#1a1a1a`): fondo del sidebar, texto de mayor peso.
+- **Ink 900** (`#1a1a1a`): fondo del login (`.auth-shell`), texto de mayor peso en el área de trabajo.
 - **Texto Primario** (`#262626`): color de texto base del cuerpo.
 - **Texto Secundario** (`#595959`): el gris exacto del logo de ISYN. Enlaces del embudo, botones secundarios.
 - **Texto Apagado** (`#737373`): metadatos, subtítulos, columnas de contexto (país, fuente).
@@ -166,9 +185,11 @@ La paleta viene directamente del logo de ISYN — no fue inventada ni elegida po
 - **Superficie** (`#ffffff`): tarjetas, tabla, campos.
 
 ### Named Rules
-**La Regla de la Excepción Única.** Solo hay un color con significado especial fuera de la escala de progreso azul: esmeralda para lo ganado. Ningún otro estado, categoría o acción recibe un color propio — se comunican con tono neutro, iconografía o forma, nunca inventando un tercer color con significado. Esta regla sobrevivió intacta al rebrand: cuando la marca cambió de índigo a Azul ISYN, no se aprovechó para "agregar un color más"; el sistema se mantuvo igual de restringido.
+**La Regla de la Excepción Única.** Dentro del área de trabajo (todo lo que no es el sidebar), solo hay un color con significado especial fuera de la escala de progreso azul: esmeralda para lo ganado. Ningún otro estado, categoría o acción recibe un color propio ahí — se comunican con tono neutro, iconografía o forma, nunca inventando un color adicional con significado de estado. Esta regla sobrevivió intacta al rebrand: cuando la marca cambió de índigo a Azul ISYN, no se aprovechó para "agregar un color más"; el área de trabajo se mantuvo igual de restringida. El terracota del sidebar (Regla del Rincón Cálido) no es una excepción a esta regla — es identidad de marca/navegación, nunca comunica estado de un prospecto, y no debe usarse fuera del sidebar.
 
 **La Regla del No-Semáforo.** El estado de un prospecto nunca se comunica con una paleta roja/ámbar/verde. Se comunica con cuánto se llenó un medidor de una sola tonalidad, más el texto — el color nunca es la única fuente de información.
+
+**La Regla del Rincón Cálido.** El sidebar es la única superficie del sistema con licencia para ser cálida, minimalista y llamativa — por pedido explícito del usuario. Vive en su propia paleta (arena/lino + terracota, ver Colors → Sidebar) y no lleva ni el azul funcional de ISYN ni el esmeralda de cierre ganado. A cambio, su vocabulario de interacción sigue siendo el mismo del resto del sistema (mismo radio de esquina, mismo peso de ícono, mismo patrón de "activo = relleno sólido") para que siga sintiéndose parte de la misma app. Esta calidez nunca cruza al área de trabajo ni a los botones, tags o medidores — el terracota no aparece fuera del sidebar.
 
 ## Typography
 
@@ -253,13 +274,13 @@ Barra de 44×6px, completamente redondeada, que se llena en Azul ISYN proporcion
 - **Search fields:** ícono de lupa incrustado a la izquierda (`.search-field`), nunca un campo de búsqueda sin señal visual de qué hace.
 
 ### Navigation
-Sidebar oscuro (`#1a1a1a`) fijo de 240px. El logo real de ISYN (`static/img/isyn-logo.png`, el asset entregado por el cliente, recortado a su contenido real) vive en una placa blanca redondeada arriba del sidebar — el archivo entregado no tenía fondo transparente, así que en vez de forzarlo sobre el fondo oscuro (se vería como una caja rota) se le dio una superficie propia, un patrón estándar para logos sin canal alfa. El fondo del sidebar no es un relleno plano: lleva el mismo resplandor de marca descrito en la Regla del Resplandor de Marca (abajo), anclado detrás del logo con tamaño fijo en píxeles (`320px 260px` y `260px 220px`, nunca porcentaje del alto de viewport, para que no se filtre hacia los enlaces de navegación en pantallas altas), más un grano de ruido casi imperceptible (`feTurbulence` SVG inline, 5% de opacidad, `mix-blend-mode: overlay`) y un realce interior de 1px en el borde superior y derecho (`rgba(255,255,255,.06)` / `.04`) que le da un borde físico sutil en vez de un corte plano. Los enlaces activos ganan fondo Azul ISYN sólido. En móvil, colapsa detrás de un botón de menú fijo y un fondo oscuro que cierra al tocar fuera.
+Sidebar fijo de 240px, en el mundo cálido descrito en la Regla del Rincón Cálido: fondo en degradado vertical muy sutil de arena a lino (`#faf3e6` → `#f1e2c8`), sin grano ni resplandor — la calidez viene del color plano, no de textura, para que se lea minimalista. El logo real de ISYN (`static/img/isyn-logo.png`) vive en una placa blanca con borde cálido (`1px solid #e7d7b8`) y una sombra suave teñida de la tinta cálida (nunca del ink-900 neutro) — el archivo entregado no tiene fondo transparente, así que necesita su propia superficie en vez de flotar directo sobre el fondo cálido. Los enlaces de navegación usan tinta cálida (`#35281b`) por defecto; en hover ganan un fondo terracota suave (`#f0d7bd`); el enlace activo gana relleno terracota sólido (`#b54a26`) con texto blanco y peso 600 — mismo patrón de "activo = relleno sólido" que el resto del sistema, solo que en el acento propio del sidebar. En móvil, colapsa detrás de un botón de menú fijo y un fondo oscuro neutro que cierra al tocar fuera (ese scrim no es parte de la identidad del sidebar, así que se queda neutro).
 
 ### Pantalla de login
 Único lugar fuera del shell de la app. Fondo oscuro (`#1a1a1a`) con dos degradados radiales muy tenues (Azul ISYN al 18% y Marino ISYN al 20%) — el mismo par de colores de la marca, nunca un tercer acento nuevo. Una sola tarjeta centrada (`.auth-card`) con el logo real de ISYN arriba (sin placa, porque la tarjeta ya es blanca) y la sombra dramática descrita en Elevation & Depth.
 
 ### Named Rules
-**La Regla del Resplandor de Marca.** Toda superficie oscura del producto (el sidebar, el fondo de login) lleva el mismo resplandor: dos degradados radiales muy tenues en el par Azul/Marino ISYN, nunca un color nuevo y nunca en la misma proporción exacta — cada superficie ajusta la opacidad y el tamaño a su propia escala, pero el par de colores es siempre el mismo. Una superficie oscura nunca es un relleno plano sin ese resplandor.
+**La Regla del Resplandor de Marca.** La pantalla de login es ahora la única superficie oscura del producto (el sidebar pasó al mundo cálido de la Regla del Rincón Cálido y ya no aplica esta regla). Lleva un resplandor de dos degradados radiales muy tenues en el par Azul/Marino ISYN, nunca un color nuevo — es el primer momento de marca de la sesión, antes de que el usuario entre al sidebar cálido o al área de trabajo azul. Una superficie oscura nunca es un relleno plano sin ese resplandor.
 
 **La Regla del Logo Real.** El logo de marca en cualquier pantalla es siempre el asset real entregado por ISYN (`static/img/isyn-logo.png`), nunca una recreación, aproximación o ícono inventado que se le parezca. Si el archivo cambia (por ejemplo, si el cliente entrega una versión con fondo transparente), se reemplaza el archivo — nunca se dibuja un sustituto.
 
@@ -272,9 +293,11 @@ Sidebar oscuro (`#1a1a1a`) fijo de 240px. El logo real de ISYN (`static/img/isyn
 - **Do** dibujar íconos propios en SVG de trazo consistente (`stroke-width: 1.6`, sin relleno).
 - **Do** usar radio `999px` solo en medidores, tracks y tags — nunca en contenedores de contenido.
 - **Do** usar siempre el archivo de logo real de ISYN, nunca una recreación.
+- **Do** mantener el terracota del sidebar contenido ahí — es identidad de navegación, no un segundo color de acción.
 
 ### Don't:
 - **Don't** introducir un tercer color con significado de estado (esto sería reconstruir el semáforo que este sistema reemplazó explícitamente).
+- **Don't** usar el terracota del sidebar (o el fondo cálido) en botones, tags, medidores o cualquier superficie del área de trabajo — rompería la Regla del Rincón Cálido, que existe precisamente para mantener esa calidez contenida.
 - **Don't** usar emoji como ícono en ningún lugar del producto.
 - **Don't** usar azul genérico de Bootstrap para acciones que no son la acción primaria de la pantalla.
 - **Don't** agregar una segunda familia tipográfica "de marca" — Inter es la única voz del sistema, por elección de modo Operate, no por omisión.
