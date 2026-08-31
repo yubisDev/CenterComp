@@ -171,7 +171,7 @@ Paleta propia, aparte de la marca ISYN, usada exclusivamente dentro del sidebar.
 - **Terracota suave** (`#f0d7bd`): fondo de hover en enlaces inactivos.
 - **Tinta cálida** (`#35281b`): texto de los enlaces de navegación y el nombre de usuario — un café oscuro, no un gris neutro, para que el texto pertenezca a la misma familia de color que el fondo.
 - **Tinta cálida suave** (`#6b5643`): pie del sidebar (usuario, botón de cerrar sesión).
-- **Borde cálido** (`#e7d7b8`): línea divisoria bajo el logo y sobre el pie, borde de la placa del logo.
+- **Borde cálido** (`#e7d7b8`): línea divisoria bajo el logo y sobre el pie del sidebar.
 
 ### Neutral
 - **Ink 900** (`#1a1a1a`): fondo del login (`.auth-shell`), texto de mayor peso en el área de trabajo.
@@ -274,7 +274,7 @@ Barra de 44×6px, completamente redondeada, que se llena en Azul ISYN proporcion
 - **Search fields:** ícono de lupa incrustado a la izquierda (`.search-field`), nunca un campo de búsqueda sin señal visual de qué hace.
 
 ### Navigation
-Sidebar fijo de 240px, en el mundo cálido descrito en la Regla del Rincón Cálido: fondo en degradado vertical muy sutil de arena a lino (`#faf3e6` → `#f1e2c8`), sin grano ni resplandor — la calidez viene del color plano, no de textura, para que se lea minimalista. El logo real de ISYN (`static/img/isyn-logo.png`) vive en una placa blanca con borde cálido (`1px solid #e7d7b8`) y una sombra suave teñida de la tinta cálida (nunca del ink-900 neutro) — el archivo entregado no tiene fondo transparente, así que necesita su propia superficie en vez de flotar directo sobre el fondo cálido. Los enlaces de navegación usan tinta cálida (`#35281b`) por defecto; en hover ganan un fondo terracota suave (`#f0d7bd`); el enlace activo gana relleno terracota sólido (`#b54a26`) con texto blanco y peso 600 — mismo patrón de "activo = relleno sólido" que el resto del sistema, solo que en el acento propio del sidebar. En móvil, colapsa detrás de un botón de menú fijo y un fondo oscuro neutro que cierra al tocar fuera (ese scrim no es parte de la identidad del sidebar, así que se queda neutro).
+Sidebar fijo de 240px, en el mundo cálido descrito en la Regla del Rincón Cálido: fondo en degradado vertical muy sutil de arena a lino (`#faf3e6` → `#f1e2c8`), sin grano ni resplandor — la calidez viene del color plano, no de textura, para que se lea minimalista. El logo real de ISYN (`static/img/isyn-logo.png`, ya con fondo transparente) flota directo sobre el degradado cálido, sin placa ni tarjeta propia — el archivo anterior tenía fondo blanco opaco y necesitaba una superficie propia para no verse como una caja rota; la versión actual ya no la necesita. Los enlaces de navegación usan tinta cálida (`#35281b`) por defecto; en hover ganan un fondo terracota suave (`#f0d7bd`); el enlace activo gana relleno terracota sólido (`#b54a26`) con texto blanco y peso 600 — mismo patrón de "activo = relleno sólido" que el resto del sistema, solo que en el acento propio del sidebar. En móvil, colapsa detrás de un botón de menú fijo y un fondo oscuro neutro que cierra al tocar fuera (ese scrim no es parte de la identidad del sidebar, así que se queda neutro).
 
 ### Pantalla de login
 Único lugar fuera del shell de la app. Fondo oscuro (`#1a1a1a`) con dos degradados radiales muy tenues (Azul ISYN al 18% y Marino ISYN al 20%) — el mismo par de colores de la marca, nunca un tercer acento nuevo. Una sola tarjeta centrada (`.auth-card`) con el logo real de ISYN arriba (sin placa, porque la tarjeta ya es blanca) y la sombra dramática descrita en Elevation & Depth.
@@ -282,7 +282,7 @@ Sidebar fijo de 240px, en el mundo cálido descrito en la Regla del Rincón Cál
 ### Named Rules
 **La Regla del Resplandor de Marca.** La pantalla de login es ahora la única superficie oscura del producto (el sidebar pasó al mundo cálido de la Regla del Rincón Cálido y ya no aplica esta regla). Lleva un resplandor de dos degradados radiales muy tenues en el par Azul/Marino ISYN, nunca un color nuevo — es el primer momento de marca de la sesión, antes de que el usuario entre al sidebar cálido o al área de trabajo azul. Una superficie oscura nunca es un relleno plano sin ese resplandor.
 
-**La Regla del Logo Real.** El logo de marca en cualquier pantalla es siempre el asset real entregado por ISYN (`static/img/isyn-logo.png`), nunca una recreación, aproximación o ícono inventado que se le parezca. Si el archivo cambia (por ejemplo, si el cliente entrega una versión con fondo transparente), se reemplaza el archivo — nunca se dibuja un sustituto.
+**La Regla del Logo Real.** El logo de marca en cualquier pantalla es siempre el asset real entregado por ISYN (`static/img/isyn-logo.png`, actualizado a una versión con fondo transparente), nunca una recreación, aproximación o ícono inventado que se le parezca. Si el archivo vuelve a cambiar, se reemplaza el archivo — nunca se dibuja un sustituto.
 
 ## Do's and Don'ts
 

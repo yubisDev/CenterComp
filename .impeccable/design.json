@@ -1,22 +1,31 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-30T00:00:00Z",
+  "generatedAt": "2026-08-31T00:00:00Z",
   "title": "Design System: ISYN",
   "extensions": {
     "colorMeta": {
       "isyn-azul": { "role": "primary", "displayName": "Azul ISYN", "canonical": "#046cb3", "tonalRamp": ["#012238", "#013a5c", "#014b72", "#025d8f", "#046cb3", "#2b87c6", "#6ba9d6", "#b8d6ec"] },
       "esmeralda-ganada": { "role": "secondary", "displayName": "Esmeralda Ganada", "canonical": "#10b981", "tonalRamp": ["#022c22", "#064e3b", "#065f46", "#047857", "#059669", "#10b981", "#6ee7b7", "#d1fae5"] },
-      "ink-900": { "role": "neutral", "displayName": "Ink 900 (sidebar)", "canonical": "#1a1a1a", "tonalRamp": ["#0d0d0d", "#1a1a1a", "#262626", "#404040", "#595959", "#737373", "#a3a3a3", "#d4d4d4"] },
+      "side-bg-top": { "role": "neutral", "displayName": "Arena Cálida (sidebar, tope)", "canonical": "#faf3e6", "tonalRamp": ["#4a3f2e", "#6b5c45", "#8c7a5d", "#ad9977", "#cbb996", "#e3d6b8", "#f3e8d2", "#faf3e6"] },
+      "side-bg-bottom": { "role": "neutral", "displayName": "Lino Cálido (sidebar, base)", "canonical": "#f1e2c8", "tonalRamp": ["#453a25", "#665738", "#87754c", "#a89362", "#c6b180", "#ddcda3", "#ecdfc0", "#f1e2c8"] },
+      "side-ink": { "role": "neutral", "displayName": "Tinta Cálida (texto sidebar)", "canonical": "#35281b", "tonalRamp": ["#140e09", "#241a11", "#35281b", "#4f3c28", "#6b5643", "#8a7360", "#ab967e", "#ccbba0"] },
+      "side-ink-soft": { "role": "neutral", "displayName": "Tinta Cálida Suave (pie de sidebar)", "canonical": "#6b5643", "tonalRamp": ["#241a11", "#35281b", "#4f3c28", "#6b5643", "#8a7360", "#ab967e", "#ccbba0", "#e9ddc9"] },
+      "side-border": { "role": "neutral", "displayName": "Borde Cálido (sidebar)", "canonical": "#e7d7b8", "tonalRamp": ["#4a3f28", "#6b5c3c", "#8c7a54", "#ad9970", "#cbb990", "#ddc9a8", "#e7d7b8", "#f5ecd8"] },
+      "side-accent": { "role": "primary", "displayName": "Terracota (acento del sidebar)", "canonical": "#b54a26", "tonalRamp": ["#341207", "#54200d", "#7a3015", "#8f3a1d", "#b54a26", "#cf6b46", "#e2937a", "#f5c9b6"] },
+      "side-accent-deep": { "role": "primary", "displayName": "Terracota Profundo (hover del sidebar)", "canonical": "#8f3a1d", "tonalRamp": ["#2a0e06", "#43170a", "#6b2812", "#8f3a1d", "#ad4c28", "#c96d47", "#e0937a", "#f2c4b1"] },
+      "side-accent-soft": { "role": "primary", "displayName": "Terracota Suave (hover de enlaces)", "canonical": "#f0d7bd", "tonalRamp": ["#5c3a22", "#7c5333", "#9c6f48", "#bb8d63", "#d6ae87", "#e8c5a4", "#f0d7bd", "#faf0e6"] },
+      "ink-900": { "role": "neutral", "displayName": "Ink 900 (login)", "canonical": "#1a1a1a", "tonalRamp": ["#0d0d0d", "#1a1a1a", "#262626", "#404040", "#595959", "#737373", "#a3a3a3", "#d4d4d4"] },
       "canvas": { "role": "neutral", "displayName": "Lienzo", "canonical": "#fafafa", "tonalRamp": ["#e5e5e5", "#ececec", "#f2f2f2", "#f5f5f5", "#fafafa", "#fbfbfb", "#fdfdfd", "#ffffff"] },
       "danger": { "role": "neutral", "displayName": "Rojo destructivo (solo eliminar)", "canonical": "#ef4444", "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"] }
     },
     "typographyMeta": {
       "display": { "displayName": "Título de página", "purpose": "Encabezado del topbar en cada pantalla. Único lugar con peso 650 a este tamaño." },
       "body": { "displayName": "Cuerpo", "purpose": "Texto base, formularios, celdas de tabla con contenido descriptivo." },
-      "label": { "displayName": "Etiqueta", "purpose": "Encabezados de columna, filtros, etiquetas de medidor de etapa. Mayúsculas, tracking abierto." }
+      "label": { "displayName": "Etiqueta", "purpose": "Encabezados de columna, filtros, etiquetas de medidor de etapa. Mayúsculas, tracking abierto." },
+      "metric-value": { "displayName": "Valor KPI", "purpose": "Cifra grande de las tarjetas del dashboard de inventario — el escalón más grande del sistema, solo para números que se leen de un vistazo." }
     },
     "shadows": [
-      { "name": "shadow-card", "value": "0 1px 2px rgba(26,26,26,.04), 0 8px 24px -12px rgba(26,26,26,.12)", "purpose": "Única sombra del sistema. Paneles, tabla, barra de filtros — todo lo que flota sobre el lienzo la usa igual." }
+      { "name": "shadow-card", "value": "0 1px 2px rgba(26,26,26,.04), 0 8px 24px -12px rgba(26,26,26,.12)", "purpose": "Única sombra del área de trabajo. Paneles, tabla, barra de filtros — todo lo que flota sobre el lienzo la usa igual. El sidebar ya no usa sombra propia desde que perdió la placa del logo." }
     ],
     "motion": [
       { "name": "ease-standard", "value": "0.12s-0.2s ease", "purpose": "Transiciones de color/fondo en hover y el deslizamiento del sidebar móvil. Sin easing elaborado; el sistema no tiene un momento de animación con protagonismo propio." }
@@ -78,24 +87,24 @@
       "name": "Sidebar Nav Link",
       "kind": "nav",
       "refersTo": "sidebar-nav-link",
-      "description": "Enlace de navegación principal. Fondo Azul ISYN sólido cuando está activo — el único lugar donde el acento cubre un área grande.",
+      "description": "Enlace de navegación principal. Ahora vive en el mundo cálido del sidebar (Regla del Rincón Cálido): tinta cálida por defecto, hover en terracota suave, activo en terracota sólido con texto blanco — reemplaza el azul sólido sobre fondo oscuro de la versión anterior.",
       "html": "<a class=\"ds-nav-link ds-nav-link-active\" href=\"#\"><svg width=\"17\" height=\"17\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"8\" cy=\"7\" r=\"3\"/><path d=\"M2.5 17c0-3 2.5-5 5.5-5s5.5 2 5.5 5\"/></svg> Compradores</a>",
-      "css": ".ds-nav-link { display: flex; align-items: center; gap: .65rem; padding: .6rem .75rem; border-radius: 10px; color: rgba(255,255,255,.68); font-weight: 500; font-size: .875rem; text-decoration: none; transition: background .12s ease, color .12s ease; } .ds-nav-link:hover { background: rgba(255,255,255,.06); color: #fff; } .ds-nav-link-active { background: #046cb3; color: #fff; }"
+      "css": ".ds-nav-link { display: flex; align-items: center; gap: .65rem; padding: .6rem .75rem; border-radius: 10px; color: #35281b; font-weight: 500; font-size: .875rem; text-decoration: none; transition: background .12s ease, color .12s ease; } .ds-nav-link:hover { background: #f0d7bd; color: #8f3a1d; } .ds-nav-link-active { background: #b54a26; color: #fff; font-weight: 600; }"
     },
     {
       "name": "Brand Mark",
       "kind": "custom",
       "refersTo": "sidebar-brand",
-      "description": "Logo real de ISYN (asset del cliente, sin fondo transparente) en una placa blanca redondeada sobre el sidebar oscuro. Nunca un logo recreado o aproximado.",
+      "description": "Logo real de ISYN, con fondo transparente. Flota directo sobre el degradado cálido del sidebar, sin placa ni tarjeta — la versión anterior del archivo tenía fondo blanco opaco y necesitaba una placa propia para no verse como una caja rota; la versión actual ya no la necesita.",
       "html": "<a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-mark\"><img src=\"/static/img/isyn-logo.png\" alt=\"ISYN\"></span></a>",
-      "css": ".ds-brand { display: flex; justify-content: center; padding: 1.5rem 1.25rem 1.25rem; border-bottom: 1px solid rgba(255,255,255,.08); } .ds-brand-mark { width: 100%; max-width: 188px; background: #fff; border-radius: 10px; padding: .6rem .8rem; box-shadow: 0 1px 2px rgba(26,26,26,.04), 0 8px 24px -12px rgba(26,26,26,.12); } .ds-brand-mark img { width: 100%; height: auto; display: block; }"
+      "css": ".ds-brand { display: flex; justify-content: center; padding: 1.5rem 1.25rem 1.25rem; border-bottom: 1px solid #e7d7b8; } .ds-brand-mark { width: 100%; max-width: 176px; display: flex; align-items: center; justify-content: center; } .ds-brand-mark img { width: 100%; height: auto; display: block; }"
     }
   ],
   "narrative": {
     "northStar": "El Tablero de Despacho",
-    "overview": "Este CRM se piensa como el tablero de una oficina de despacho de subastas, licitaciones y negocios internacionales: nada decorativo, cada marca en el tablero significa algo concreto, y quien lo opera es una persona de ventas o comercio exterior, no un diseñador — nunca debe detenerse a interpretar qué significa un color. La información se organiza por intensidad de una sola tonalidad, no por un código de colores que hay que memorizar.\n\nEl sistema usa como único acento el Azul ISYN — sacado directamente del logo real de la marca — para todo lo que es progreso o acción. El resto es una escala neutra de grises, también tomada del gris del logo. La única excepción ganada es el esmeralda, reservado estrictamente para el momento en que algo se cierra a favor: un comprador que llega a \"Cliente\", el canal de WhatsApp. No hay una tercera familia de color por decoración.\n\nConfirmado explícitamente por el usuario: el carácter es preciso y sin fricción, no cálido. El cliente real de este proyecto es ISYN (Internacional de Subastas y Negocios), una empresa panameña de subastas y negocios internacionales; el producto llevaba antes el nombre provisional \"CenterComp\", ya retirado de toda superficie visible. El sistema construido bajo ese nombre se conservó íntegro — solo se re-coloreó con la paleta real de ISYN, sampleada por color exacto de píxel del logo entregado por el cliente.",
+    "overview": "Este CRM se piensa como el tablero de una oficina de despacho de subastas, licitaciones y negocios internacionales: nada decorativo, cada marca en el tablero significa algo concreto, y quien lo opera es una persona de ventas o comercio exterior, no un diseñador — nunca debe detenerse a interpretar qué significa un color. La información se organiza por intensidad de una sola tonalidad, no por un código de colores que hay que memorizar.\n\nEl sistema usa como único acento el Azul ISYN — sacado directamente del logo real de la marca — para todo lo que es progreso o acción. El resto es una escala neutra de grises, también tomada del gris del logo. La única excepción ganada es el esmeralda, reservado estrictamente para el momento en que algo se cierra a favor: un comprador que llega a \"Cliente\", el canal de WhatsApp. No hay una tercera familia de color por decoración.\n\nConfirmado explícitamente por el usuario: el carácter del área de trabajo (tabla, formularios, paneles — todo lo que vive a la derecha del sidebar) es preciso y sin fricción, no cálido — cada elemento existe para que una persona encuentre y contacte un prospecto más rápido, no para transmitir cercanía a través de la forma. La densidad de la tabla, la escala tipográfica ajustada, y la ausencia de decoración son deliberadas. Este carácter se mantuvo al adoptar la marca de ISYN — no se reblandeció el sistema para \"verse más cálido\" solo porque cambió la paleta.\n\nPivote confirmado (sidebar): en una sesión posterior el usuario pidió explícitamente que el sidebar dejara de sentirse \"genérico\" y se volviera cálido, minimalista y llamativo. Esto es un cambio de dirección real, no un descuido. El sidebar es ahora la única superficie del sistema con su propia paleta e identidad cromática, deliberadamente distinta del azul funcional del área de trabajo; el resto del carácter \"preciso y sin fricción\" sigue intacto en todo lo demás.\n\nConfirmado explícitamente por el usuario: el cliente real de este proyecto es ISYN (Internacional de Subastas y Negocios), una empresa panameña de subastas y negocios internacionales; el producto llevaba antes el nombre provisional \"CenterComp\", ya retirado de toda superficie visible. El sistema construido bajo ese nombre se conservó íntegro — solo se re-coloreó con la paleta real de ISYN, sampleada por color exacto de píxel del logo entregado por el cliente.",
     "keyCharacteristics": [
-      "Un solo acento de color (Azul ISYN, sampleado del logo real) para toda acción/progreso; el esmeralda es una excepción con significado, no un color más",
+      "Un solo acento de color (Azul ISYN) para toda acción/progreso en el área de trabajo; el esmeralda es una excepción con significado, no un color más. El sidebar vive aparte, en su propio mundo cálido (terracota) — ver Regla del Rincón Cálido",
       "Escala neutra tomada del gris real del logo de ISYN, que hace la mayor parte del trabajo visual",
       "Iconografía dibujada en trazo consistente, nunca emoji",
       "Densidad alta a propósito — la tabla es el producto",
@@ -103,12 +112,13 @@
       "El logo de marca es siempre el asset real del cliente, nunca una recreación"
     ],
     "rules": [
-      { "name": "La Regla de la Excepción Única", "body": "Solo hay un color con significado especial fuera de la escala de progreso Azul ISYN: esmeralda para lo ganado. Ningún otro estado, categoría o acción recibe un color propio.", "section": "colors" },
+      { "name": "La Regla de la Excepción Única", "body": "Dentro del área de trabajo (todo lo que no es el sidebar), solo hay un color con significado especial fuera de la escala de progreso azul: esmeralda para lo ganado. Ningún otro estado, categoría o acción recibe un color propio ahí. El terracota del sidebar (Regla del Rincón Cálido) no es una excepción a esta regla — es identidad de marca/navegación, nunca comunica estado de un prospecto, y no debe usarse fuera del sidebar.", "section": "colors" },
       { "name": "La Regla del No-Semáforo", "body": "El estado de un prospecto nunca se comunica con una paleta roja/ámbar/verde. Se comunica con cuánto se llenó un medidor de una sola tonalidad, más el texto.", "section": "colors" },
+      { "name": "La Regla del Rincón Cálido", "body": "El sidebar es la única superficie del sistema con licencia para ser cálida, minimalista y llamativa — por pedido explícito del usuario. Vive en su propia paleta (arena/lino + terracota) y no lleva ni el azul funcional de ISYN ni el esmeralda de cierre ganado. A cambio, su vocabulario de interacción sigue siendo el mismo del resto del sistema (mismo radio de esquina, mismo peso de ícono, mismo patrón de \"activo = relleno sólido\"). Esta calidez nunca cruza al área de trabajo ni a los botones, tags o medidores.", "section": "colors" },
       { "name": "La Regla de la Familia Única", "body": "Ninguna pantalla introduce una segunda familia tipográfica. La jerarquía se construye con peso y tamaño.", "section": "typography" },
-      { "name": "La Regla de la Sombra Única", "body": "Solo existe un valor de sombra en todo el sistema. La jerarquía la da el color y la tipografía, no la profundidad.", "section": "elevation" },
-      { "name": "La Regla del Resplandor de Marca", "body": "Toda superficie oscura del producto (sidebar, login) lleva el mismo resplandor: dos degradados radiales tenues en el par Azul/Marino ISYN, nunca un color nuevo. Ninguna superficie oscura es un relleno plano sin ese resplandor.", "section": "colors" },
-      { "name": "La Regla del Logo Real", "body": "El logo de marca es siempre el asset real entregado por ISYN, nunca una recreación o aproximación. Si el archivo cambia, se reemplaza el archivo — nunca se dibuja un sustituto.", "section": "components" }
+      { "name": "La Regla de la Sombra Única", "body": "Dentro del área de trabajo existe un solo valor de sombra. La única excepción confirmada es la pantalla de login, que usa una sombra más dramática derivada del mismo Ink 900.", "section": "elevation" },
+      { "name": "La Regla del Resplandor de Marca", "body": "La pantalla de login es ahora la única superficie oscura del producto (el sidebar pasó al mundo cálido de la Regla del Rincón Cálido y ya no aplica esta regla). Lleva un resplandor de dos degradados radiales muy tenues en el par Azul/Marino ISYN, nunca un color nuevo.", "section": "colors" },
+      { "name": "La Regla del Logo Real", "body": "El logo de marca es siempre el asset real entregado por ISYN (ahora con fondo transparente), nunca una recreación o aproximación. Si el archivo vuelve a cambiar, se reemplaza el archivo — nunca se dibuja un sustituto.", "section": "components" }
     ],
     "dos": [
       "Do usar Azul ISYN para todo lo que sea progreso o acción, en cualquier intensidad de su rampa de tinte.",
@@ -116,14 +126,15 @@
       "Do acompañar siempre el color de estado con texto — nunca solo color.",
       "Do dibujar íconos propios en SVG de trazo consistente (stroke-width: 1.6, sin relleno).",
       "Do usar radio 999px solo en medidores, tracks y tags — nunca en contenedores de contenido.",
-      "Do usar siempre el archivo de logo real de ISYN, nunca una recreación."
+      "Do usar siempre el archivo de logo real de ISYN, nunca una recreación.",
+      "Do mantener el terracota del sidebar contenido ahí — es identidad de navegación, no un segundo color de acción."
     ],
     "donts": [
       "Don't introducir un tercer color con significado de estado.",
+      "Don't usar el terracota del sidebar (o el fondo cálido) en botones, tags, medidores o cualquier superficie del área de trabajo.",
       "Don't usar emoji como ícono en ningún lugar del producto.",
       "Don't usar azul genérico de Bootstrap para acciones que no son la acción primaria de la pantalla.",
       "Don't agregar una segunda familia tipográfica \"de marca\".",
-      "Don't introducir tarjetas de métrica tipo \"número grande + etiqueta\" sin una función real.",
       "Don't referirse al producto como \"CenterComp\" en ninguna superficie visible."
     ]
   }
