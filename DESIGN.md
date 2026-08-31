@@ -21,6 +21,11 @@ colors:
   danger: "#ef4444"
   danger-soft: "#fee2e2"
 typography:
+  metric-value:
+    fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
+    fontSize: "1.7rem"
+    fontWeight: 700
+    letterSpacing: "-0.01em"
   display:
     fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif"
     fontSize: "1.15rem"
@@ -174,6 +179,7 @@ La paleta viene directamente del logo de ISYN — no fue inventada ni elegida po
 ### Hierarchy
 Escala ajustada e intencionalmente granular (ratio de paso corto, ~1.02–1.06 entre escalones vecinos) — típica de modo Operate, donde cada componente de UI necesita su propio tamaño exacto en vez de compartir 3-4 tallas genéricas.
 
+- **1.7rem** (700, tabular-nums): valor numérico de las tarjetas KPI del dashboard de inventario — el escalón más grande del sistema, reservado para cifras que se leen de un vistazo.
 - **1.15rem** (650): título de página, encabezado del topbar.
 - **1.02rem** (700): nombre de marca en el sidebar.
 - **0.925rem** (400, 1.5): cuerpo base — texto por defecto de toda la app.

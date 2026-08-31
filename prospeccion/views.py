@@ -5,8 +5,9 @@ from urllib.parse import quote
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.mail import EmailMessage, get_connection
 from django.core.paginator import Paginator
-from django.db.models import Q
+from django.db.models import Count, Q, Sum
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
@@ -68,6 +69,32 @@ def _construir_mensaje(comprador):
     return asunto, cuerpo_email, cuerpo_whatsapp
 
 
+def _aplicar_filtros_comprador(qs, params):
+    """Aplica al queryset los mismos filtros de búsqueda (q/estado/pais/sector/fuente)
+    usados tanto en el listado de compradores como en el envío masivo."""
+    q = params.get('q', '').strip()
+    estado = params.get('estado', '')
+    pais = params.get('pais', '')
+    sector = params.get('sector', '')
+    fuente = params.get('fuente', '')
+
+    if q:
+        qs = qs.filter(
+            Q(nombre_empresa__icontains=q) | Q(pais__icontains=q) | Q(sector__icontains=q)
+        )
+    if estado:
+        qs = qs.filter(estado=estado)
+    if pais:
+        qs = qs.filter(pais=pais)
+    if sector:
+        qs = qs.filter(sector=sector)
+    if fuente:
+        qs = qs.filter(fuente=fuente)
+
+    filtros = {'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente}
+    return qs, filtros
+
+
 ETAPA_INDICE = {
     Comprador.Estado.POR_CONTACTAR: 0,
     Comprador.Estado.CONTACTADO: 1,
@@ -89,26 +116,8 @@ def _enriquecer(comprador):
 
 @login_required
 def compradores_lista(request):
-    qs = Comprador.objects.select_related().prefetch_related('productos_interes')
-
-    q = request.GET.get('q', '').strip()
-    estado = request.GET.get('estado', '')
-    pais = request.GET.get('pais', '')
-    sector = request.GET.get('sector', '')
-    fuente = request.GET.get('fuente', '')
-
-    if q:
-        qs = qs.filter(
-            Q(nombre_empresa__icontains=q) | Q(pais__icontains=q) | Q(sector__icontains=q)
-        )
-    if estado:
-        qs = qs.filter(estado=estado)
-    if pais:
-        qs = qs.filter(pais=pais)
-    if sector:
-        qs = qs.filter(sector=sector)
-    if fuente:
-        qs = qs.filter(fuente=fuente)
+    qs = Comprador.objects.prefetch_related('productos_interes')
+    qs, filtros = _aplicar_filtros_comprador(qs, request.GET)
 
     paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -138,7 +147,7 @@ def compradores_lista(request):
             'etiqueta': etiqueta,
             'cantidad': cantidad,
             'pct': round(cantidad / total * 100) if total else 0,
-            'activo': estado == valor,
+            'activo': filtros['estado'] == valor,
         })
 
     context = {
@@ -147,7 +156,7 @@ def compradores_lista(request):
         'fuentes': Comprador.Fuente.choices,
         'paises': paises,
         'sectores': sectores,
-        'filtros': {'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente},
+        'filtros': filtros,
         'querystring': querystring.urlencode(),
         'querystring_sin_estado': querystring_sin_estado.urlencode(),
         'total_compradores': total,
@@ -227,6 +236,95 @@ def comprador_marcar_contactado(request, pk):
     return redirect(next_url)
 
 
+ENVIO_MASIVO_LIMITE = 300
+
+
+@login_required
+def compradores_envio_masivo(request):
+    qs, filtros = _aplicar_filtros_comprador(Comprador.objects.all(), request.GET)
+    qs = qs.exclude(email='').order_by('nombre_empresa')
+    total_filtrados = qs.count()
+    destinatarios = list(qs[:ENVIO_MASIVO_LIMITE])
+
+    plantilla_id = request.GET.get('plantilla', '')
+    plantilla = None
+    if plantilla_id:
+        plantilla = PlantillaMensaje.objects.filter(pk=plantilla_id, tipo=PlantillaMensaje.Tipo.EMAIL).first()
+    for comprador in destinatarios:
+        producto = comprador.productos_interes.first()
+        producto_nombre = producto.nombre if producto else ''
+        if plantilla:
+            asunto, _ = plantilla.render(comprador, producto_nombre)
+        else:
+            asunto, _, _ = _construir_mensaje(comprador)
+        comprador.asunto_preview = asunto
+        comprador.whatsapp_url = f'https://wa.me/{comprador.whatsapp_numero}' if comprador.whatsapp_numero else ''
+
+    context = {
+        'destinatarios': destinatarios,
+        'total_filtrados': total_filtrados,
+        'limite': ENVIO_MASIVO_LIMITE,
+        'estados': Comprador.Estado.choices,
+        'fuentes': Comprador.Fuente.choices,
+        'paises': Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais'),
+        'sectores': Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector'),
+        'filtros': filtros,
+        'plantillas': PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL),
+        'plantilla_id': plantilla_id,
+        'querystring': request.GET.urlencode(),
+    }
+    return render(request, 'prospeccion/compradores_envio_masivo.html', context)
+
+
+@login_required
+@require_POST
+def compradores_envio_masivo_enviar(request):
+    plantilla = get_object_or_404(
+        PlantillaMensaje, pk=request.POST.get('plantilla_id'), tipo=PlantillaMensaje.Tipo.EMAIL,
+    )
+    pks = request.POST.getlist('compradores')
+    compradores = Comprador.objects.filter(pk__in=pks).exclude(email='')
+
+    enviados = 0
+    errores = 0
+    connection = get_connection()
+    connection.open()
+    try:
+        for comprador in compradores:
+            producto = comprador.productos_interes.first()
+            asunto, cuerpo = plantilla.render(comprador, producto.nombre if producto else '')
+            try:
+                EmailMessage(
+                    subject=asunto, body=cuerpo, to=[comprador.email], connection=connection,
+                ).send()
+            except Exception:
+                errores += 1
+                continue
+
+            HistorialContacto.objects.create(
+                comprador=comprador,
+                medio=HistorialContacto.Medio.EMAIL,
+                resultado=f'Envío masivo — plantilla "{plantilla.nombre}"',
+                usuario=request.user,
+            )
+            comprador.fecha_ultimo_contacto = timezone.now()
+            if comprador.estado == Comprador.Estado.POR_CONTACTAR:
+                comprador.estado = Comprador.Estado.CONTACTADO
+            comprador.save()
+            enviados += 1
+    finally:
+        connection.close()
+
+    if enviados:
+        messages.success(request, f'Se enviaron {enviados} correo(s) con la plantilla "{plantilla.nombre}".')
+    if errores:
+        messages.warning(request, f'{errores} correo(s) no se pudieron enviar.')
+    if not enviados and not errores:
+        messages.warning(request, 'No había destinatarios válidos seleccionados.')
+
+    return redirect('compradores_lista')
+
+
 @login_required
 def compradores_importar(request):
     resumen = None
@@ -243,10 +341,16 @@ def compradores_importar(request):
     return render(request, 'prospeccion/compradores_importar.html', {'form': form, 'resumen': resumen})
 
 
+IMPORTACION_TAMANO_MAXIMO = 10 * 1024 * 1024  # 10 MB
+
+
 def _procesar_importacion(archivo):
     nombre = archivo.name.lower()
     filas = []
     errores = []
+
+    if archivo.size > IMPORTACION_TAMANO_MAXIMO:
+        return {'creados': 0, 'errores': ['El archivo supera el tamaño máximo permitido (10 MB).']}
 
     if nombre.endswith('.csv'):
         contenido = archivo.read().decode('utf-8-sig', errors='replace')
@@ -451,6 +555,70 @@ def productos_lista(request):
         'querystring': querystring.urlencode(),
     }
     return render(request, 'prospeccion/productos_lista.html', context)
+
+
+@login_required
+def productos_dashboard(request):
+    productos = Producto.objects.all()
+    total_productos = productos.count()
+    cantidad_total = productos.aggregate(total=Sum('cantidad_disponible'))['total'] or 0
+    valor_total = (productos.aggregate(v=Sum('valor_estimado'))['v'] or 0) + (
+        productos.filter(valor_estimado__isnull=True)
+        .aggregate(v=Sum('precio_referencia'))['v'] or 0
+    )
+    categorias_count = productos.exclude(categoria='').values('categoria').distinct().count()
+    confidenciales_count = productos.filter(confidencial=True).count()
+
+    categorias = list(
+        productos.exclude(categoria='')
+        .values('categoria')
+        .annotate(total=Count('id'), cantidad=Sum('cantidad_disponible'))
+        .order_by('-total')[:10]
+    )
+    max_total = max((c['total'] for c in categorias), default=0)
+    for c in categorias:
+        c['pct'] = round(c['total'] / max_total * 100) if max_total else 0
+
+    top_interes = (
+        Producto.objects.annotate(num_interesados=Count('compradores_interesados'))
+        .filter(num_interesados__gt=0)
+        .order_by('-num_interesados')[:8]
+    )
+
+    context = {
+        'total_productos': total_productos,
+        'cantidad_total': cantidad_total,
+        'valor_total': valor_total,
+        'categorias_count': categorias_count,
+        'confidenciales_count': confidenciales_count,
+        'categorias': categorias,
+        'top_interes': top_interes,
+    }
+    return render(request, 'prospeccion/productos_dashboard.html', context)
+
+
+@login_required
+def producto_detalle(request, pk):
+    producto = get_object_or_404(Producto, pk=pk)
+
+    if request.method == 'POST':
+        comprador = Comprador.objects.filter(pk=request.POST.get('comprador_id')).first()
+        if comprador:
+            producto.compradores_interesados.add(comprador)
+            messages.success(request, f'{comprador.nombre_empresa} se vinculó como interesado en este producto.')
+        return redirect('producto_detalle', pk=producto.pk)
+
+    interesados = [_enriquecer(c) for c in producto.compradores_interesados.all()]
+    candidatos = Comprador.objects.exclude(
+        pk__in=[c.pk for c in interesados]
+    ).order_by('nombre_empresa')
+
+    context = {
+        'producto': producto,
+        'interesados': interesados,
+        'candidatos': candidatos,
+    }
+    return render(request, 'prospeccion/producto_detalle.html', context)
 
 
 @login_required

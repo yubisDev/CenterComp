@@ -16,9 +16,14 @@ urlpatterns = [
     path('compradores/<int:pk>/marcar-contactado/', views.comprador_marcar_contactado, name='comprador_marcar_contactado'),
 
     path('productos/', views.productos_lista, name='productos_lista'),
+    path('productos/dashboard/', views.productos_dashboard, name='productos_dashboard'),
     path('productos/nuevo/', views.producto_form, name='producto_nuevo'),
+    path('productos/<int:pk>/', views.producto_detalle, name='producto_detalle'),
     path('productos/<int:pk>/editar/', views.producto_form, name='producto_editar'),
     path('productos/<int:pk>/eliminar/', views.producto_eliminar, name='producto_eliminar'),
+
+    path('compradores/envio-masivo/', views.compradores_envio_masivo, name='compradores_envio_masivo'),
+    path('compradores/envio-masivo/enviar/', views.compradores_envio_masivo_enviar, name='compradores_envio_masivo_enviar'),
 
     path('plantillas/', views.plantillas_lista, name='plantillas_lista'),
     path('plantillas/nueva/', views.plantilla_form, name='plantilla_nueva'),

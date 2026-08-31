@@ -49,6 +49,7 @@ _ICONS = {
         '<circle cx="10" cy="10" r="3.4"/>'
         '<circle cx="14.2" cy="5.8" r="0.6" fill="currentColor" stroke="none"/>'
     ),
+    'bar-chart': '<path d="M4 17V9.5M10 17V3M16 17v-6.5"/><path d="M2.5 17h15"/>',
     'link': (
         '<path d="M8.3 11.7a2.9 2.9 0 0 0 4.2.2l2-2a2.9 2.9 0 1 0-4.1-4.1l-1.1 1.1"/>'
         '<path d="M11.7 8.3a2.9 2.9 0 0 0-4.2-.2l-2 2a2.9 2.9 0 1 0 4.1 4.1l1.1-1.1"/>'

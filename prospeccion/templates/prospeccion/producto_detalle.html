@@ -1,0 +1,137 @@
+{% extends 'base.html' %}
+{% load icons humanize_extra %}
+{% block title %}{{ producto.nombre }}{% endblock %}
+{% block page_title %}{{ producto.nombre }}{% endblock %}
+{% block page_subtitle %}
+<div class="subtitle">{{ producto.categoria|default:'Sin categoría' }}{% if producto.referencia %} · Ref. {{ producto.referencia }}{% endif %}</div>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'producto_editar' producto.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+    <form method="post" action="{% url 'producto_eliminar' producto.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este producto?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+    </form>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">
+                    {% if producto.confidencial %}<span class="text-muted-soft" title="Confidencial">{% icon 'lock' size=14 %}</span>{% endif %}
+                    Datos del producto
+                </h5>
+                <p class="mb-2"><span class="text-muted-soft">Cantidad disponible</span><br><span style="font-variant-numeric: tabular-nums;">{{ producto.cantidad_disponible }}</span></p>
+                <p class="mb-2"><span class="text-muted-soft">Precio de referencia</span><br>{% if producto.precio_referencia %}${{ producto.precio_referencia|floatformat:'-2' }}{% else %}—{% endif %}</p>
+                <p class="mb-2"><span class="text-muted-soft">Valor estimado</span><br>{% if producto.valor_estimado %}${{ producto.valor_estimado|floatformat:'-2' }}{% else %}—{% endif %}</p>
+                {% if producto.descripcion %}
+                <p class="mb-2"><span class="text-muted-soft">Descripción</span><br>{{ producto.descripcion }}</p>
+                {% endif %}
+                {% if producto.condiciones_venta %}
+                <p class="mb-0" style="white-space: pre-wrap;"><span class="text-muted-soft" style="white-space: normal;">Condiciones de venta</span><br>{{ producto.condiciones_venta }}</p>
+                {% endif %}
+            </div>
+        </div>
+        {% if producto.proveedor_nombre or producto.proveedor_contacto or producto.proveedor_email or producto.proveedor_telefono %}
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">Proveedor / consignante</h5>
+                {% if producto.proveedor_nombre %}<p class="mb-2"><span class="text-muted-soft">Empresa</span><br>{{ producto.proveedor_nombre }}</p>{% endif %}
+                {% if producto.proveedor_contacto %}<p class="mb-2"><span class="text-muted-soft">Contacto</span><br>{{ producto.proveedor_contacto }}</p>{% endif %}
+                <div class="contact-list mb-0">
+                    {% if producto.proveedor_email %}
+                    <a class="contact-row" href="mailto:{{ producto.proveedor_email }}">
+                        <span class="icon-btn icon-btn-mail">{% icon 'mail' %}</span>
+                        <span class="contact-value">{{ producto.proveedor_email }}</span>
+                    </a>
+                    {% endif %}
+                    {% if producto.proveedor_telefono %}
+                    <a class="contact-row" href="tel:{{ producto.proveedor_telefono }}">
+                        <span class="icon-btn icon-btn-chat">{% icon 'chat' %}</span>
+                        <span class="contact-value">{{ producto.proveedor_telefono }}</span>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-7">
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">Vincular comprador interesado</h5>
+                <form method="post" class="row g-2 align-items-center">
+                    {% csrf_token %}
+                    <div class="col-md-9">
+                        <select name="comprador_id" class="form-select" required>
+                            <option value="">Selecciona un comprador…</option>
+                            {% for c in candidatos %}
+                                <option value="{{ c.pk }}">{{ c.nombre_empresa }} — {{ c.pais }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <button type="submit" class="btn btn-primary btn-sm w-100">Vincular</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <h5 class="mb-2">Compradores interesados <span class="text-muted-soft">({{ interesados|length }})</span></h5>
+        <div class="table-panel">
+            <div class="table-responsive">
+                <table class="table table-modern align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>Empresa</th>
+                            <th>País</th>
+                            <th>Estado</th>
+                            <th class="text-end">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for comprador in interesados %}
+                        <tr>
+                            <td><a class="row-link" href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_empresa }}</a></td>
+                            <td class="text-muted-soft">{{ comprador.pais }}</td>
+                            <td>
+                                {% if comprador.es_descartado %}
+                                <span class="stage stage-dropped">
+                                    <span class="stage-mark">{% icon 'x' size=14 %}</span>
+                                    <span class="stage-label">Descartado</span>
+                                </span>
+                                {% else %}
+                                <span class="stage">
+                                    <span class="stage-track"><span class="stage-fill{% if comprador.estado == 'cliente' %} is-won{% endif %}" style="width: {% widthratio comprador.etapa_indice|add:1 4 100 %}%"></span></span>
+                                    <span class="stage-label">{{ comprador.get_estado_display }}</span>
+                                </span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="action-cluster">
+                                    {% if comprador.email %}
+                                    <a class="icon-btn icon-btn-mail" href="{{ comprador.mailto_url }}" title="Enviar correo" aria-label="Enviar correo a {{ comprador.nombre_empresa }}">{% icon 'mail' %}</a>
+                                    {% endif %}
+                                    {% if comprador.whatsapp_url %}
+                                    <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp" aria-label="Contactar a {{ comprador.nombre_empresa }} por WhatsApp">{% icon 'chat' %}</a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr><td colspan="4">
+                            <div class="empty-state">
+                                {% icon 'inbox' size=30 %}
+                                <p>Todavía nadie está vinculado como interesado en este producto.</p>
+                            </div>
+                        </td></tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

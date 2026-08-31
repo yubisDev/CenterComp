@@ -48,9 +48,11 @@
             <tbody>
             {% for producto in page_obj %}
                 <tr>
-                    <td class="row-link">
-                        {% if producto.confidencial %}<span class="text-muted-soft" title="Confidencial">{% icon 'lock' size=13 %}</span>{% endif %}
-                        {{ producto.nombre }}
+                    <td>
+                        <a class="row-link" href="{% url 'producto_detalle' producto.pk %}">
+                            {% if producto.confidencial %}<span class="text-muted-soft" title="Confidencial">{% icon 'lock' size=13 %}</span>{% endif %}
+                            {{ producto.nombre }}
+                        </a>
                         {% if producto.proveedor_nombre %}<div class="text-muted-soft small fw-normal">{{ producto.proveedor_nombre }}{% if producto.referencia %} · {{ producto.referencia }}{% endif %}</div>{% endif %}
                     </td>
                     <td>{% if producto.categoria %}<span class="pill pill-muted">{{ producto.categoria }}</span>{% else %}—{% endif %}</td>

@@ -25,10 +25,18 @@ ALLOWED_HOSTS = [
     h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()
 ]
 
+CSRF_TRUSTED_ORIGINS = []
+
 RAILWAY_PUBLIC_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
 if RAILWAY_PUBLIC_DOMAIN:
     ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
-    CSRF_TRUSTED_ORIGINS = [f'https://{RAILWAY_PUBLIC_DOMAIN}']
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_PUBLIC_DOMAIN}')
+
+# Render provee esta variable automáticamente en cada servicio.
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+    CSRF_TRUSTED_ORIGINS.append(f'https://{RENDER_EXTERNAL_HOSTNAME}')
 
 
 # Application definition
@@ -75,9 +83,9 @@ WSGI_APPLICATION = 'centercomp.wsgi.application'
 
 
 # Database
-# En local usa SQLite. En Railway, define la variable de entorno DATABASE_URL
-# (Railway la provee automáticamente al añadir un plugin de PostgreSQL) y se
-# usará Postgres sin cambiar nada más.
+# En local usa SQLite. En producción (Render + Postgres de Supabase, o
+# Railway), define la variable de entorno DATABASE_URL con la cadena de
+# conexión de Postgres y se usará esa base sin cambiar nada más.
 
 DATABASES = {
     'default': dj_database_url.config(
@@ -136,3 +144,28 @@ LOGOUT_REDIRECT_URL = 'login'
 # Búsqueda de compradores con IA (Gemini + Google Search grounding)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 BUSQUEDA_IA_LIMITE_DIARIO = int(os.environ.get('BUSQUEDA_IA_LIMITE_DIARIO', '20'))
+
+# Envío masivo de correo. Sin EMAIL_HOST configurado, los mensajes se
+# imprimen en la consola del servidor (no se envía nada real) — útil para
+# probar el módulo antes de tener credenciales SMTP reales.
+if os.environ.get('EMAIL_HOST'):
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-responder@isyn.com')
+
+# Seguridad de producción — se activa solo cuando DEBUG está apagado para no
+# romper el desarrollo local en http://localhost.
+if not DEBUG:
+    SECURE_SSL_REDIRECT = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')

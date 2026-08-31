@@ -1,0 +1,147 @@
+{% extends 'base.html' %}
+{% load icons %}
+{% block title %}Envío masivo{% endblock %}
+{% block page_title %}Envío masivo{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Filtra un grupo de compradores y envíales una plantilla en un solo lote</div>{% endblock %}
+{% block content %}
+
+<form method="get" class="filter-bar mb-3">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+            <label class="form-label d-block">Buscar</label>
+            <div class="search-field">
+                {% icon 'search' size=16 %}
+                <input type="text" name="q" value="{{ filtros.q }}" class="form-control" placeholder="Empresa, país o sector">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                {% for value, label in estados %}
+                    <option value="{{ value }}" {% if filtros.estado == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">País</label>
+            <select name="pais" class="form-select">
+                <option value="">Todos</option>
+                {% for p in paises %}
+                    <option value="{{ p }}" {% if filtros.pais == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">Sector</label>
+            <select name="sector" class="form-select">
+                <option value="">Todos</option>
+                {% for s in sectores %}
+                    <option value="{{ s }}" {% if filtros.sector == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label d-block">Plantilla de correo</label>
+            <select name="plantilla" class="form-select">
+                <option value="">Sin plantilla (mensaje genérico)</option>
+                {% for p in plantillas %}
+                    <option value="{{ p.pk }}" {% if plantilla_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
+        <a href="{% url 'compradores_envio_masivo' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        {% if not plantillas %}
+        <span class="text-muted-soft small ms-2">No hay plantillas de correo todavía — <a href="{% url 'plantilla_nueva' %}">crea una</a> para personalizar el mensaje.</span>
+        {% endif %}
+    </div>
+</form>
+
+{% if not plantilla_id %}
+<div class="alert alert-info">Selecciona una plantilla de correo arriba y pulsa "Filtrar" para poder enviar. Sin plantilla se usará un mensaje genérico.</div>
+{% endif %}
+
+<form method="post" action="{% url 'compradores_envio_masivo_enviar' %}" id="envioForm">
+    {% csrf_token %}
+    <input type="hidden" name="plantilla_id" value="{{ plantilla_id }}">
+
+    <div class="table-panel mb-3">
+        <div class="table-responsive">
+            <table class="table table-modern align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th style="width:2.5rem;"><input type="checkbox" class="form-check-input" id="seleccionarTodos" checked></th>
+                        <th>Empresa</th>
+                        <th>País</th>
+                        <th>Correo</th>
+                        <th>Asunto (vista previa)</th>
+                        <th class="text-end">WhatsApp</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for comprador in destinatarios %}
+                    <tr>
+                        <td><input type="checkbox" class="form-check-input" name="compradores" value="{{ comprador.pk }}" checked></td>
+                        <td>{{ comprador.nombre_empresa }}</td>
+                        <td class="text-muted-soft">{{ comprador.pais }}</td>
+                        <td class="text-muted-soft">{{ comprador.email }}</td>
+                        <td class="text-muted-soft">{{ comprador.asunto_preview }}</td>
+                        <td class="text-end">
+                            {% if comprador.whatsapp_url %}
+                            <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Abrir conversación de WhatsApp" aria-label="Abrir WhatsApp con {{ comprador.nombre_empresa }}">{% icon 'chat' %}</a>
+                            {% else %}—{% endif %}
+                        </td>
+                    </tr>
+                {% empty %}
+                    <tr><td colspan="6">
+                        <div class="empty-state">
+                            {% icon 'mail' size=30 %}
+                            <p>Ningún comprador con correo coincide con estos filtros.</p>
+                        </div>
+                    </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% if destinatarios %}
+    <div class="d-flex justify-content-between align-items-center">
+        <span class="text-muted-soft small">
+            {{ total_filtrados }} comprador{{ total_filtrados|pluralize }} con correo coincide{{ total_filtrados|pluralize:'n' }} con el filtro
+            {% if total_filtrados > limite %}(mostrando los primeros {{ limite }} — reduce el filtro para incluir a los demás){% endif %}
+        </span>
+        <button type="submit" class="btn btn-primary" {% if not plantilla_id %}disabled{% endif %}>
+            Enviar a los seleccionados
+        </button>
+    </div>
+    {% endif %}
+</form>
+
+<script>
+(function () {
+    var todos = document.getElementById('seleccionarTodos');
+    var form = document.getElementById('envioForm');
+    if (!todos || !form) return;
+    todos.addEventListener('change', function () {
+        form.querySelectorAll('input[name="compradores"]').forEach(function (cb) {
+            cb.checked = todos.checked;
+        });
+    });
+    form.addEventListener('submit', function (e) {
+        var marcados = form.querySelectorAll('input[name="compradores"]:checked').length;
+        if (marcados === 0) {
+            e.preventDefault();
+            alert('Selecciona al menos un comprador.');
+            return;
+        }
+        if (!confirm('¿Enviar el correo a ' + marcados + ' destinatario(s)?')) {
+            e.preventDefault();
+        }
+    });
+})();
+</script>
+{% endblock %}

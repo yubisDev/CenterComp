@@ -1,0 +1,80 @@
+{% extends 'base.html' %}
+{% load icons %}
+{% block title %}Dashboard de inventario{% endblock %}
+{% block page_title %}Dashboard de inventario{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Vista general del inventario y del interés que despierta entre los compradores</div>{% endblock %}
+{% block content %}
+
+<div class="metric-grid">
+    <div class="metric-card">
+        <div class="metric-label">Productos totales</div>
+        <div class="metric-value">{{ total_productos }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Unidades disponibles</div>
+        <div class="metric-value">{{ cantidad_total }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Valor total estimado</div>
+        <div class="metric-value">${{ valor_total|floatformat:'-0' }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Categorías</div>
+        <div class="metric-value">{{ categorias_count }}</div>
+    </div>
+    <div class="metric-card">
+        <div class="metric-label">Lotes confidenciales</div>
+        <div class="metric-value">{{ confidenciales_count }}</div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-7">
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">Inventario por categoría</h5>
+                {% if categorias %}
+                <div class="bar-list">
+                    {% for c in categorias %}
+                    <div class="bar-row">
+                        <span class="bar-label">{{ c.categoria }}</span>
+                        <span class="bar-track"><span class="bar-fill" style="width: {{ c.pct }}%"></span></span>
+                        <span class="bar-value">{{ c.total }} producto{{ c.total|pluralize }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    {% icon 'box' size=28 %}
+                    <p>Todavía no hay productos con categoría asignada.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">Productos con más interés</h5>
+                {% if top_interes %}
+                <div class="interes-list">
+                    {% for producto in top_interes %}
+                    <div class="interes-row">
+                        <a class="row-link" href="{% url 'producto_detalle' producto.pk %}">{{ producto.nombre }}</a>
+                        <span class="pill pill-brand">{{ producto.num_interesados }} interesado{{ producto.num_interesados|pluralize }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="empty-state">
+                    {% icon 'inbox' size=28 %}
+                    <p>Ningún producto tiene compradores vinculados todavía.</p>
+                    <p class="text-muted-soft small">Vincula compradores desde la ficha de cada producto.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

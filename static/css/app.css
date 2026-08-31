@@ -467,6 +467,77 @@ table.table-modern a.row-link:hover { color: var(--brand-600); }
 
 .auth-card .mark img { width: 100%; height: auto; display: block; }
 
+/* ---------- Dashboard de inventario ---------- */
+
+.metric-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.metric-card {
+  background: #fff;
+  border: 1px solid var(--ink-200);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+  padding: 1.1rem 1.25rem;
+}
+
+.metric-card .metric-label {
+  font-size: .76rem;
+  font-weight: 650;
+  color: var(--ink-500);
+  text-transform: uppercase;
+  letter-spacing: .03em;
+  margin-bottom: .4rem;
+}
+
+.metric-card .metric-value {
+  font-size: 1.7rem;
+  font-weight: 700;
+  color: var(--ink-900);
+  letter-spacing: -.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-list { display: flex; flex-direction: column; gap: .85rem; }
+
+.bar-row { display: grid; grid-template-columns: 1fr 3fr auto; align-items: center; gap: .9rem; }
+
+.bar-row .bar-label { font-size: .85rem; font-weight: 600; color: var(--ink-800); }
+
+.bar-row .bar-track {
+  height: 8px;
+  border-radius: 99px;
+  background: var(--ink-100);
+  overflow: hidden;
+}
+
+.bar-row .bar-fill { height: 100%; border-radius: 99px; background: var(--brand-600); }
+
+.bar-row .bar-value {
+  font-size: .8rem;
+  font-weight: 650;
+  color: var(--ink-500);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.interes-list { display: flex; flex-direction: column; }
+
+.interes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: .7rem 0;
+  border-bottom: 1px solid var(--ink-100);
+}
+
+.interes-row:last-child { border-bottom: none; }
+
 /* ---------- Cards grid (plantillas) ---------- */
 
 .card-tpl { border: 1px solid var(--ink-200); border-radius: var(--radius); box-shadow: var(--shadow-card); height: 100%; }

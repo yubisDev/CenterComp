@@ -22,8 +22,11 @@
             <a href="{% url 'compradores_lista' %}" class="{% if request.resolver_match.url_name == 'compradores_lista' %}active{% endif %}">
                 <span class="icon">{% icon 'users' size=17 %}</span> Compradores
             </a>
-            <a href="{% url 'productos_lista' %}" class="{% if request.resolver_match.url_name == 'productos_lista' %}active{% endif %}">
+            <a href="{% url 'productos_lista' %}" class="{% if request.resolver_match.url_name == 'productos_lista' or request.resolver_match.url_name == 'producto_detalle' %}active{% endif %}">
                 <span class="icon">{% icon 'box' size=17 %}</span> Productos
+            </a>
+            <a href="{% url 'productos_dashboard' %}" class="{% if request.resolver_match.url_name == 'productos_dashboard' %}active{% endif %}">
+                <span class="icon">{% icon 'bar-chart' size=17 %}</span> Dashboard
             </a>
             <a href="{% url 'plantillas_lista' %}" class="{% if request.resolver_match.url_name == 'plantillas_lista' %}active{% endif %}">
                 <span class="icon">{% icon 'file-text' size=17 %}</span> Plantillas
@@ -33,6 +36,9 @@
             </a>
             <a href="{% url 'compradores_buscar_ia' %}" class="{% if request.resolver_match.url_name == 'compradores_buscar_ia' %}active{% endif %}">
                 <span class="icon">{% icon 'sparkle' size=17 %}</span> Buscar con IA
+            </a>
+            <a href="{% url 'compradores_envio_masivo' %}" class="{% if request.resolver_match.url_name == 'compradores_envio_masivo' %}active{% endif %}">
+                <span class="icon">{% icon 'mail' size=17 %}</span> Envío masivo
             </a>
             <a href="{% url 'admin:index' %}">
                 <span class="icon">{% icon 'settings' size=17 %}</span> Admin
