@@ -105,6 +105,19 @@
 
   --shadow-card: 0 1px 2px rgba(0, 0, 0, .35), 0 8px 24px -12px rgba(0, 0, 0, .6);
 
+  /* Bootstrap pinta fondo/texto de tabla, badges, etc. leyendo sus propias
+     variables --bs-*, no las nuestras — sin esto, cada <td> se queda
+     blanco/negro aunque .table-panel ya esté oscuro. */
+  --bs-body-bg: var(--bg-canvas);
+  --bs-body-color: var(--text-primary);
+  --bs-border-color: var(--border-default);
+  --bs-secondary-bg: var(--bg-surface-sunken);
+  --bs-tertiary-bg: var(--bg-surface-sunken);
+  --bs-emphasis-color: var(--text-heading);
+  --bs-secondary-color: var(--text-muted);
+  --bs-link-color: var(--brand-600);
+  --bs-link-hover-color: var(--brand-700);
+
   color-scheme: dark;
 }
 
@@ -751,3 +764,13 @@ table.table-modern a.row-link:hover { color: var(--brand-600); }
 
 :root[data-theme="dark"] .form-check-input { background-color: var(--bg-surface); border-color: var(--border-strong); }
 :root[data-theme="dark"] .form-check-input:checked { background-color: var(--brand-600); border-color: var(--brand-600); }
+
+:root[data-theme="dark"] table.table-modern {
+  --bs-table-bg: transparent;
+  --bs-table-color: var(--text-primary);
+  --bs-table-striped-bg: var(--bg-surface-sunken);
+  --bs-table-striped-color: var(--text-primary);
+  --bs-table-hover-bg: var(--bg-surface-sunken);
+  --bs-table-hover-color: var(--text-heading);
+  --bs-table-border-color: var(--border-soft);
+}
