@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: isyn-crm
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt && python manage.py collectstatic --noinput"
+    startCommand: "python manage.py migrate --noinput && gunicorn centercomp.wsgi --log-file -"
+    healthCheckPath: /login/
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.7
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ""
+      # Cadena de conexión de Postgres de Supabase (Project Settings → Database → Connection string → URI).
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: BUSQUEDA_IA_LIMITE_DIARIO
+        value: "20"
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_PORT
+        value: "587"
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: EMAIL_USE_TLS
+        value: "True"
+      - key: DEFAULT_FROM_EMAIL
+        value: "no-responder@isyn.com"
