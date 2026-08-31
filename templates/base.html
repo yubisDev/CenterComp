@@ -3,6 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script>
+    (function () {
+        try {
+            var theme = localStorage.getItem('isyn-theme');
+            if (!theme) theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            document.documentElement.setAttribute('data-theme', theme);
+            if (localStorage.getItem('isyn-sidebar') === 'collapsed') {
+                document.documentElement.setAttribute('data-sidebar', 'collapsed');
+            }
+        } catch (e) {}
+    })();
+    </script>
     <title>{% block title %}Prospección de Compradores{% endblock %} · ISYN</title>
     <link rel="icon" href="{% static_v 'img/favicon.ico' %}" sizes="any">
     <link rel="icon" type="image/png" href="{% static_v 'img/isyn-mark.png' %}">
@@ -58,9 +70,18 @@
 
     <div class="main">
         <div class="topbar">
-            <div>
-                <h1>{% block page_title %}Prospección de compradores{% endblock %}</h1>
-                {% block page_subtitle %}<div class="subtitle">Gestiona tu pipeline de compradores nacionales e internacionales</div>{% endblock %}
+            <div class="topbar-titles">
+                <button type="button" class="chrome-btn sidebar-collapse-btn" id="sidebarCollapseBtn" aria-label="Ocultar navegación" aria-controls="appSidebar" aria-pressed="false">{% icon 'sidebar' size=17 %}</button>
+                <div>
+                    <h1>{% block page_title %}Prospección de compradores{% endblock %}</h1>
+                    {% block page_subtitle %}<div class="subtitle">Gestiona tu pipeline de compradores nacionales e internacionales</div>{% endblock %}
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <button type="button" class="chrome-btn theme-toggle" id="themeToggle" aria-label="Cambiar a tema oscuro" aria-pressed="false">
+                    <span class="icon-sun">{% icon 'sun' size=17 %}</span>
+                    <span class="icon-moon">{% icon 'moon' size=17 %}</span>
+                </button>
             </div>
         </div>
         <div class="content">
