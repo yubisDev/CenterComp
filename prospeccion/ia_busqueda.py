@@ -83,7 +83,14 @@ def buscar_empresas(consulta, maximo=8):
         raise BusquedaIAError('Falta instalar la librería google-genai.') from exc
 
     try:
-        client = genai.Client(api_key=settings.GEMINI_API_KEY)
+        # Límite de tiempo explícito: sin esto, una llamada que se cuelga
+        # puede reintentar varias veces por debajo antes de fallar — cada
+        # reintento es una llamada real y cobrable, y como el intento nunca
+        # "termina bien", ni siquiera queda registrado en BusquedaIA para
+        # el tope diario. Un timeout corto acota el daño de cualquier
+        # incidente a un solo intento fallido.
+        http_options = types.HttpOptions(timeout=45_000)  # ms
+        client = genai.Client(api_key=settings.GEMINI_API_KEY, http_options=http_options)
         grounding_tool = types.Tool(google_search=types.GoogleSearch())
         config = types.GenerateContentConfig(tools=[grounding_tool])
         response = client.models.generate_content(
