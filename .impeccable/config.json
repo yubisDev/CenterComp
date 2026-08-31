@@ -20,6 +20,27 @@
         "value": "rgba(14,165,160,.22)",
         "createdAt": "2026-08-26T19:28:46.028Z",
         "reason": "Sidebar background glow, same indigo/teal brand-mark pair documented as 'La Regla del Resplandor de Marca' in DESIGN.md > Components > Navigation -- each dark surface (sidebar, login) reuses the pair at its own tuned opacity, not a new color"
+      },
+      {
+        "rule": "layout-transition",
+        "value": "*",
+        "files": [
+          "static/css/app.css"
+        ],
+        "createdAt": "2026-08-31T17:17:42.593Z",
+        "reason": "El colapso del sidebar de escritorio necesita reflow real (que .main ocupe el espacio liberado); transform no logra ese efecto. Transicion unica de 180ms, iniciada por el usuario, no continua/scroll-linked."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#3a2f10",
+        "createdAt": "2026-08-31T17:17:47.627Z",
+        "reason": "Fondo de .alert-warning en modo oscuro; el sistema no documenta un token de advertencia (el .alert-warning claro tampoco esta en DESIGN.md), es un ajuste puntual de un componente de Bootstrap poco usado."
+      },
+      {
+        "rule": "design-system-color",
+        "value": "#e8c468",
+        "createdAt": "2026-08-31T17:17:47.710Z",
+        "reason": "Texto de .alert-warning en modo oscuro, pareja del fondo #3a2f10 -- mismo motivo."
       }
     ]
   }
