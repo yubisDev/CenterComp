@@ -35,7 +35,7 @@
         <span class="spinner spinner-lg text-muted-soft"></span>
         <div>
             <strong>Buscando en la web real…</strong>
-            <p class="mb-0 text-muted-soft">Esto suele tardar entre 15 y 40 segundos — la IA está verificando cada empresa con búsquedas reales, no solo generando texto. No cierres ni recargues esta página.</p>
+            <p class="mb-0 text-muted-soft">Esto suele tardar entre 20 y 60 segundos — la IA busca cada empresa en la web real, y además su LinkedIn, Facebook e Instagram, no solo genera texto. No cierres ni recargues esta página.</p>
         </div>
     </div>
 </div>
@@ -86,7 +86,10 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
                             {% if empresa.email %}<div>{% icon 'mail' size=14 %} {{ empresa.email }}</div>{% endif %}
                             {% if empresa.telefono %}<div>{% icon 'chat' size=14 %} {{ empresa.telefono }}</div>{% endif %}
                             {% if empresa.sitio_web %}<div>{% icon 'link' size=14 %} {{ empresa.sitio_web }}</div>{% endif %}
-                            {% if not empresa.email and not empresa.telefono and not empresa.sitio_web %}<span class="text-muted-soft">Sin datos de contacto</span>{% endif %}
+                            {% if empresa.linkedin_url %}<div>{% icon 'linkedin' size=14 %} <a href="{{ empresa.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a></div>{% endif %}
+                            {% if empresa.facebook_url %}<div>{% icon 'facebook' size=14 %} <a href="{{ empresa.facebook_url }}" target="_blank" rel="noopener">Facebook</a></div>{% endif %}
+                            {% if empresa.instagram_url %}<div>{% icon 'instagram' size=14 %} <a href="{{ empresa.instagram_url }}" target="_blank" rel="noopener">Instagram</a></div>{% endif %}
+                            {% if not empresa.email and not empresa.telefono and not empresa.sitio_web and not empresa.linkedin_url and not empresa.facebook_url and not empresa.instagram_url %}<span class="text-muted-soft">Sin datos de contacto</span>{% endif %}
                         </td>
                     </tr>
                 {% empty %}

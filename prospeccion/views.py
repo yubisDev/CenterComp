@@ -502,6 +502,9 @@ def compradores_buscar_ia_guardar(request):
             email=item.get('email', ''),
             telefono=item.get('telefono', ''),
             sitio_web=item.get('sitio_web', ''),
+            linkedin_url=item.get('linkedin_url', ''),
+            facebook_url=item.get('facebook_url', ''),
+            instagram_url=item.get('instagram_url', ''),
             fuente=Comprador.Fuente.IA,
             notas=notas,
         )

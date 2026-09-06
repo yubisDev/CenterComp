@@ -22,13 +22,21 @@ busca compradores potenciales para sus productos.
 Usa la búsqueda de Google para encontrar hasta {maximo} EMPRESAS REALES que \
 coincidan con esta descripción: "{consulta}"
 
+Para cada empresa, busca también su página de LinkedIn, su Facebook y su \
+Instagram, además del correo, teléfono y sitio web — igual que buscarías el \
+resto de sus datos.
+
 Reglas estrictas:
 - Solo incluye empresas que existan de verdad y que hayas podido confirmar \
 con la búsqueda. Nunca inventes ni "completes" un dato que no encontraste.
-- Si no encuentras el correo, teléfono o sitio web de una empresa, deja ese \
-campo como cadena vacía "" — NO lo adivines ni generes uno con formato \
-plausible.
+- Si no encuentras el correo, teléfono, sitio web, LinkedIn, Facebook o \
+Instagram de una empresa, deja ese campo como cadena vacía "" — NO lo \
+adivines ni generes uno con formato plausible.
+- Los enlaces de LinkedIn/Facebook/Instagram deben ser la URL real del \
+perfil de la EMPRESA (no de una persona, no un enlace genérico a la red).
 - No repitas empresas.
+- Sé directo: no dediques búsquedas a empresas que ya descartaste, no repitas \
+verificaciones de un mismo dato.
 
 Responde ÚNICAMENTE con un array JSON (sin texto antes ni después, sin \
 bloque de código markdown) con este formato exacto:
@@ -42,6 +50,9 @@ bloque de código markdown) con este formato exacto:
     "email": "...",
     "telefono": "...",
     "sitio_web": "...",
+    "linkedin_url": "...",
+    "facebook_url": "...",
+    "instagram_url": "...",
     "resumen": "Una frase breve de por qué encaja o qué hace la empresa"
   }}
 ]
@@ -89,7 +100,7 @@ def buscar_empresas(consulta, maximo=8):
         # "termina bien", ni siquiera queda registrado en BusquedaIA para
         # el tope diario. Un timeout corto acota el daño de cualquier
         # incidente a un solo intento fallido.
-        http_options = types.HttpOptions(timeout=45_000)  # ms
+        http_options = types.HttpOptions(timeout=90_000)  # ms — más margen: ahora busca más canales por empresa
         client = genai.Client(api_key=settings.GEMINI_API_KEY, http_options=http_options)
         grounding_tool = types.Tool(google_search=types.GoogleSearch())
         config = types.GenerateContentConfig(tools=[grounding_tool])
@@ -117,6 +128,9 @@ def buscar_empresas(consulta, maximo=8):
             'email': str(item.get('email', ''))[:254],
             'telefono': str(item.get('telefono', ''))[:30],
             'sitio_web': str(item.get('sitio_web', ''))[:200],
+            'linkedin_url': str(item.get('linkedin_url', ''))[:200],
+            'facebook_url': str(item.get('facebook_url', ''))[:200],
+            'instagram_url': str(item.get('instagram_url', ''))[:200],
             'resumen': str(item.get('resumen', ''))[:300],
         })
 
