@@ -27,6 +27,8 @@ from .forms import (
 from .models import BusquedaIA, Comprador, HistorialContacto, PlantillaMensaje, Producto
 from .texto import titulo_inteligente
 
+_SIN_CARGAR = object()  # centinela: "no me pasaron la plantilla, búscala tú" (distinto de None = "ya sé que no hay")
+
 FUENTE_ALIASES = {
     'hunter': Comprador.Fuente.HUNTER,
     'hunter.io': Comprador.Fuente.HUNTER,
@@ -40,13 +42,19 @@ FUENTE_ALIASES = {
 }
 
 
-def _construir_mensaje(comprador):
+def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN_CARGAR):
     """Devuelve (asunto_email, cuerpo_email, cuerpo_whatsapp) usando la primera
-    plantilla disponible de cada tipo, o un mensaje genérico si no hay ninguna."""
+    plantilla disponible de cada tipo, o un mensaje genérico si no hay ninguna.
+
+    Al recorrer muchos compradores (listados, envío masivo), pasa las
+    plantillas ya buscadas una sola vez con `plantilla_email`/`plantilla_wa`
+    — si no se pasan, esta función las busca ella misma (cómodo para un
+    solo comprador, pero dispararía una consulta por fila en un bucle)."""
     producto = comprador.productos_interes.first()
     producto_nombre = producto.nombre if producto else ''
 
-    plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
+    if plantilla_email is _SIN_CARGAR:
+        plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
     if plantilla_email:
         asunto, cuerpo_email = plantilla_email.render(comprador, producto_nombre)
     else:
@@ -57,7 +65,8 @@ def _construir_mensaje(comprador):
             + '.\n\nQuedamos atentos.\n'
         )
 
-    plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
+    if plantilla_wa is _SIN_CARGAR:
+        plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
     if plantilla_wa:
         _, cuerpo_whatsapp = plantilla_wa.render(comprador, producto_nombre)
     else:
@@ -104,8 +113,8 @@ ETAPA_INDICE = {
 }
 
 
-def _enriquecer(comprador):
-    asunto, cuerpo_email, cuerpo_whatsapp = _construir_mensaje(comprador)
+def _enriquecer(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN_CARGAR):
+    asunto, cuerpo_email, cuerpo_whatsapp = _construir_mensaje(comprador, plantilla_email, plantilla_wa)
     comprador.mailto_url = f'mailto:{comprador.email}?subject={quote(asunto)}&body={quote(cuerpo_email)}'
     numero = comprador.whatsapp_numero
     comprador.whatsapp_url = f'https://wa.me/{numero}?text={quote(cuerpo_whatsapp)}' if numero else ''
@@ -122,8 +131,10 @@ def compradores_lista(request):
 
     paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
+    plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
+    plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
     for comprador in page_obj.object_list:
-        _enriquecer(comprador)
+        _enriquecer(comprador, plantilla_email, plantilla_wa)
 
     paises = Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais')
     sectores = Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector')
@@ -243,7 +254,7 @@ ENVIO_MASIVO_LIMITE = 300
 @login_required
 def compradores_envio_masivo(request):
     qs, filtros = _aplicar_filtros_comprador(Comprador.objects.all(), request.GET)
-    qs = qs.exclude(email='').order_by('nombre_empresa')
+    qs = qs.exclude(email='').order_by('nombre_empresa').prefetch_related('productos_interes')
     total_filtrados = qs.count()
     destinatarios = list(qs[:ENVIO_MASIVO_LIMITE])
 
@@ -251,13 +262,17 @@ def compradores_envio_masivo(request):
     plantilla = None
     if plantilla_id:
         plantilla = PlantillaMensaje.objects.filter(pk=plantilla_id, tipo=PlantillaMensaje.Tipo.EMAIL).first()
+    plantilla_email_generica = plantilla or PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
+    plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
     for comprador in destinatarios:
         producto = comprador.productos_interes.first()
         producto_nombre = producto.nombre if producto else ''
         if plantilla:
             asunto, _ = plantilla.render(comprador, producto_nombre)
         else:
-            asunto, _, _ = _construir_mensaje(comprador)
+            asunto, _, _ = _construir_mensaje(
+                comprador, plantilla_email=plantilla_email_generica, plantilla_wa=plantilla_wa,
+            )
         comprador.asunto_preview = asunto
         comprador.whatsapp_url = f'https://wa.me/{comprador.whatsapp_numero}' if comprador.whatsapp_numero else ''
 
@@ -284,7 +299,7 @@ def compradores_envio_masivo_enviar(request):
         PlantillaMensaje, pk=request.POST.get('plantilla_id'), tipo=PlantillaMensaje.Tipo.EMAIL,
     )
     pks = request.POST.getlist('compradores')
-    compradores = Comprador.objects.filter(pk__in=pks).exclude(email='')
+    compradores = Comprador.objects.filter(pk__in=pks).exclude(email='').prefetch_related('productos_interes')
 
     enviados = 0
     errores = 0
@@ -659,7 +674,12 @@ def producto_detalle(request, pk):
             messages.success(request, f'{comprador.nombre_empresa} se vinculó como interesado en este producto.')
         return redirect('producto_detalle', pk=producto.pk)
 
-    interesados = [_enriquecer(c) for c in producto.compradores_interesados.all()]
+    plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
+    plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
+    interesados = [
+        _enriquecer(c, plantilla_email, plantilla_wa)
+        for c in producto.compradores_interesados.prefetch_related('productos_interes')
+    ]
     candidatos = Comprador.objects.exclude(
         pk__in=[c.pk for c in interesados]
     ).order_by('nombre_empresa')
