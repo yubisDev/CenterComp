@@ -1,5 +1,6 @@
 import csv
 import io
+import threading
 from urllib.parse import quote
 
 from django.conf import settings
@@ -412,14 +413,59 @@ def _procesar_importacion(archivo):
 
 
 # --- Búsqueda de compradores con IA ---
+#
+# La búsqueda con grounding real puede tardar decenas de segundos, así que
+# no bloqueamos la petición HTTP esperando a la IA: se crea el registro de
+# BusquedaIA de una vez (en estado "pendiente") y un hilo aparte hace la
+# llamada real y actualiza ese mismo registro cuando termina. La pantalla
+# de "Buscar con IA" solo guarda en sesión el ID de esa búsqueda y consulta
+# su estado cada pocos segundos (ver compradores_buscar_ia_estado) hasta
+# que queda "listo" o "error".
+
+def _ejecutar_busqueda_en_segundo_plano(busqueda_id, consulta):
+    from django.db import connections
+
+    try:
+        empresas, fuentes = ia_busqueda.buscar_empresas(consulta)
+    except ia_busqueda.BusquedaIAError as exc:
+        BusquedaIA.objects.filter(pk=busqueda_id).update(
+            estado=BusquedaIA.Estado.ERROR, error_mensaje=str(exc),
+        )
+    except Exception:  # noqa: BLE001 — un hilo de fondo nunca debe morir en silencio sin dejar rastro
+        BusquedaIA.objects.filter(pk=busqueda_id).update(
+            estado=BusquedaIA.Estado.ERROR,
+            error_mensaje='Ocurrió un error inesperado buscando con IA.',
+        )
+    else:
+        BusquedaIA.objects.filter(pk=busqueda_id).update(
+            estado=BusquedaIA.Estado.LISTO,
+            resultados=len(empresas),
+            resultados_json=empresas,
+            fuentes_json=fuentes,
+        )
+    finally:
+        connections.close_all()
+
 
 @login_required
 def compradores_buscar_ia(request):
     form = BusquedaIAForm(initial={'consulta': request.session.get('ia_consulta', '')})
+    busqueda = None
+    busqueda_id = request.session.get('ia_busqueda_id')
+    if busqueda_id:
+        busqueda = BusquedaIA.objects.filter(pk=busqueda_id, usuario=request.user).first()
+
+    if busqueda and busqueda.estado == BusquedaIA.Estado.ERROR:
+        messages.error(request, busqueda.error_mensaje or 'La IA no respondió correctamente.')
+    elif busqueda and busqueda.estado == BusquedaIA.Estado.LISTO:
+        if not busqueda.resultados_json:
+            messages.warning(request, 'La IA no encontró empresas para esa búsqueda. Prueba con otros términos.')
+
     context = {
         'form': form,
-        'resultados': request.session.get('ia_resultados'),
-        'fuentes': request.session.get('ia_fuentes', []),
+        'busqueda': busqueda,
+        'resultados': busqueda.resultados_json if busqueda and busqueda.estado == BusquedaIA.Estado.LISTO else None,
+        'fuentes': (busqueda.fuentes_json or []) if busqueda and busqueda.estado == BusquedaIA.Estado.LISTO else [],
         'consulta_previa': request.session.get('ia_consulta', ''),
         'ia_configurada': bool(settings.GEMINI_API_KEY),
     }
@@ -446,29 +492,33 @@ def compradores_buscar_ia_ejecutar(request):
         )
         return redirect('compradores_buscar_ia')
 
-    try:
-        empresas, fuentes = ia_busqueda.buscar_empresas(consulta)
-    except ia_busqueda.BusquedaIAError as exc:
-        messages.error(request, str(exc))
-        return redirect('compradores_buscar_ia')
+    busqueda = BusquedaIA.objects.create(
+        consulta=consulta, usuario=request.user, estado=BusquedaIA.Estado.PENDIENTE,
+    )
+    threading.Thread(
+        target=_ejecutar_busqueda_en_segundo_plano, args=(busqueda.pk, consulta), daemon=True,
+    ).start()
 
-    BusquedaIA.objects.create(consulta=consulta, usuario=request.user, resultados=len(empresas))
-
-    request.session['ia_resultados'] = empresas
+    request.session['ia_busqueda_id'] = busqueda.pk
     request.session['ia_consulta'] = consulta
-    request.session['ia_fuentes'] = fuentes
-
-    if not empresas:
-        messages.warning(request, 'La IA no encontró empresas para esa búsqueda. Prueba con otros términos.')
-    else:
-        messages.success(request, f'Se encontraron {len(empresas)} empresas. Revísalas antes de guardarlas.')
     return redirect('compradores_buscar_ia')
+
+
+@login_required
+def compradores_buscar_ia_estado(request, busqueda_id):
+    busqueda = get_object_or_404(BusquedaIA, pk=busqueda_id, usuario=request.user)
+    return JsonResponse({
+        'estado': busqueda.estado,
+        'total_resultados': busqueda.resultados if busqueda.estado == BusquedaIA.Estado.LISTO else None,
+    })
 
 
 @login_required
 @require_POST
 def compradores_buscar_ia_guardar(request):
-    resultados = request.session.get('ia_resultados') or []
+    busqueda_id = request.session.get('ia_busqueda_id')
+    busqueda = BusquedaIA.objects.filter(pk=busqueda_id, usuario=request.user).first() if busqueda_id else None
+    resultados = (busqueda.resultados_json or []) if busqueda else []
     seleccionados = request.POST.getlist('seleccion')
 
     creados = 0
@@ -510,9 +560,8 @@ def compradores_buscar_ia_guardar(request):
         )
         creados += 1
 
-    request.session.pop('ia_resultados', None)
+    request.session.pop('ia_busqueda_id', None)
     request.session.pop('ia_consulta', None)
-    request.session.pop('ia_fuentes', None)
 
     messages.success(request, f'Se guardaron {creados} compradores nuevos.')
     return redirect('compradores_lista')
@@ -521,9 +570,8 @@ def compradores_buscar_ia_guardar(request):
 @login_required
 @require_POST
 def compradores_buscar_ia_descartar(request):
-    request.session.pop('ia_resultados', None)
+    request.session.pop('ia_busqueda_id', None)
     request.session.pop('ia_consulta', None)
-    request.session.pop('ia_fuentes', None)
     return redirect('compradores_buscar_ia')
 
 

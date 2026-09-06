@@ -175,8 +175,16 @@ class PlantillaMensaje(models.Model):
 
 
 class BusquedaIA(models.Model):
-    """Bitácora de cada búsqueda con IA — solo para poder contar cuántas se
-    hicieron hoy y frenar antes de acercarse a la cuota/gasto configurado."""
+    """Bitácora de cada búsqueda con IA — cuenta cuántas se hicieron hoy para
+    frenar antes de acercarse a la cuota/gasto configurado, y además hace de
+    "trabajo en segundo plano": la búsqueda real corre en un hilo aparte y
+    va actualizando este mismo registro, para que la pantalla no se quede
+    congelada esperando la respuesta de la IA."""
+
+    class Estado(models.TextChoices):
+        PENDIENTE = 'pendiente', 'Procesando'
+        LISTO = 'listo', 'Listo'
+        ERROR = 'error', 'Error'
 
     consulta = models.CharField(max_length=300)
     creado_en = models.DateTimeField(auto_now_add=True)
@@ -184,6 +192,10 @@ class BusquedaIA(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
     )
     resultados = models.PositiveIntegerField(default=0)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.PENDIENTE)
+    resultados_json = models.JSONField(null=True, blank=True)
+    fuentes_json = models.JSONField(null=True, blank=True)
+    error_mensaje = models.TextField(blank=True)
 
     class Meta:
         ordering = ['-creado_en']

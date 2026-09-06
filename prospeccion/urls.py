@@ -8,6 +8,7 @@ urlpatterns = [
     path('compradores/importar/', views.compradores_importar, name='compradores_importar'),
     path('compradores/buscar-ia/', views.compradores_buscar_ia, name='compradores_buscar_ia'),
     path('compradores/buscar-ia/ejecutar/', views.compradores_buscar_ia_ejecutar, name='compradores_buscar_ia_ejecutar'),
+    path('compradores/buscar-ia/estado/<int:busqueda_id>/', views.compradores_buscar_ia_estado, name='compradores_buscar_ia_estado'),
     path('compradores/buscar-ia/guardar/', views.compradores_buscar_ia_guardar, name='compradores_buscar_ia_guardar'),
     path('compradores/buscar-ia/descartar/', views.compradores_buscar_ia_descartar, name='compradores_buscar_ia_descartar'),
     path('compradores/<int:pk>/', views.comprador_detalle, name='comprador_detalle'),

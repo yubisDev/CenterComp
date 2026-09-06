@@ -22,20 +22,20 @@
     <label class="form-label d-block">{{ form.consulta.label }}</label>
     <div class="d-flex gap-2">
         {{ form.consulta }}
-        <button type="submit" class="btn btn-primary" id="btnBuscarIA" {% if not ia_configurada %}disabled{% endif %}>
-            <span class="btn-buscar-idle">{% icon 'sparkle' size=15 %} Buscar</span>
-            <span class="btn-buscar-loading d-none"><span class="spinner"></span> Buscando…</span>
+        <button type="submit" class="btn btn-primary" id="btnBuscarIA" {% if not ia_configurada or busqueda.estado == 'pendiente' %}disabled{% endif %}>
+            <span class="btn-buscar-idle {% if busqueda.estado == 'pendiente' %}d-none{% endif %}">{% icon 'sparkle' size=15 %} Buscar</span>
+            <span class="btn-buscar-loading {% if busqueda.estado != 'pendiente' %}d-none{% endif %}"><span class="spinner"></span> Buscando…</span>
         </button>
     </div>
     <div class="form-text mt-2" id="textoAyudaIA">Ej. "empresas de electrónica en México", "importadores de audífonos en España"</div>
 </form>
 
-<div class="panel mb-3 d-none" id="avisoCargandoIA">
+<div class="panel mb-3 {% if not busqueda or busqueda.estado != 'pendiente' %}d-none{% endif %}" id="avisoCargandoIA">
     <div class="panel-body d-flex align-items-start gap-3">
         <span class="spinner spinner-lg text-muted-soft"></span>
         <div>
             <strong>Buscando en la web real…</strong>
-            <p class="mb-0 text-muted-soft">Esto suele tardar entre 20 y 60 segundos — la IA busca cada empresa en la web real, y además su LinkedIn, Facebook e Instagram, no solo genera texto. No cierres ni recargues esta página.</p>
+            <p class="mb-0 text-muted-soft">Esto corre en segundo plano — puedes cambiar de pantalla y volver después, aquí seguirá esperando el resultado. Suele tardar entre 20 y 60 segundos, porque la IA busca cada empresa en la web real, y además su LinkedIn, Facebook e Instagram.</p>
         </div>
     </div>
 </div>
@@ -47,9 +47,21 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
     document.getElementById('btnBuscarIA').setAttribute('disabled', 'disabled');
     document.querySelector('.btn-buscar-idle').classList.add('d-none');
     document.querySelector('.btn-buscar-loading').classList.remove('d-none');
-    document.getElementById('avisoCargandoIA').classList.remove('d-none');
-    document.getElementById('textoAyudaIA').classList.add('d-none');
 });
+
+{% if busqueda and busqueda.estado == 'pendiente' %}
+(function () {
+    var url = '{% url "compradores_buscar_ia_estado" busqueda.pk %}';
+    var intervalo = setInterval(function () {
+        fetch(url).then(function (r) { return r.json(); }).then(function (data) {
+            if (data.estado !== 'pendiente') {
+                clearInterval(intervalo);
+                window.location.reload();
+            }
+        }).catch(function () { /* si falla un sondeo, se reintenta en el siguiente */ });
+    }, 2500);
+})();
+{% endif %}
 </script>
 
 {% if resultados is not None %}
