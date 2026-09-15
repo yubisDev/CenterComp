@@ -292,6 +292,7 @@ def compradores_envio_masivo(request):
         'destinatarios': destinatarios,
         'total_filtrados': total_filtrados,
         'limite': ENVIO_MASIVO_LIMITE,
+        'plantilla': plantilla,
         'estados': Comprador.Estado.choices,
         'fuentes': Comprador.Fuente.choices,
         'paises': Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais'),

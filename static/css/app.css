@@ -271,6 +271,25 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-heading); font-weight: 650; letter-sp
 
 .panel-body { padding: 1.25rem 1.4rem; }
 
+/* ---------- Vista previa de mensaje (envío masivo) ---------- */
+
+.mensaje-preview {
+  background: var(--bg-surface-sunken);
+  border-radius: var(--radius-sm);
+  padding: .9rem 1.1rem;
+}
+
+.mensaje-preview-asunto {
+  font-weight: 650;
+  color: var(--text-heading);
+  margin-bottom: .4rem;
+}
+
+.mensaje-preview-cuerpo {
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+}
+
 /* ---------- Stat cards ---------- */
 
 /* ---------- Filter bar ---------- */
