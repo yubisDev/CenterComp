@@ -15,16 +15,20 @@ import re
 
 from django.conf import settings
 
-PROMPT_PLANTILLA = """\
-Eres un asistente de investigación B2B para un exportador colombiano que \
-busca compradores potenciales para sus productos.
+MAXIMO_POR_DEFECTO = 5
+MAXIMO_TECHO = 5  # nunca se le pide más que esto a la IA, sin importar lo que pase el llamador
 
-Usa la búsqueda de Google para encontrar hasta {maximo} EMPRESAS REALES que \
-coincidan con esta descripción: "{consulta}"
-
+REGLAS_COMUNES = """\
 Para cada empresa, busca también su página de LinkedIn, su Facebook y su \
 Instagram, además del correo, teléfono y sitio web — igual que buscarías el \
 resto de sus datos.
+
+LÍMITES DE BÚSQUEDA (obligatorios, para que esto sea rápido):
+- Devuelve COMO MÁXIMO {maximo} empresas. Ni una más, aunque encuentres candidatas \
+adicionales. Prefiere menos resultados pero encontrados rápido, a muchos y lentos.
+- No profundices en una sola empresa. Si no encuentras el correo, teléfono o \
+redes sociales de una empresa con una búsqueda rápida, deja esos campos vacíos \
+y pasa de inmediato a la siguiente — no seguir insistiendo por ese dato.
 
 Reglas estrictas:
 - Solo incluye empresas que existan de verdad y que hayas podido confirmar \
@@ -35,11 +39,12 @@ adivines ni generes uno con formato plausible.
 - Los enlaces de LinkedIn/Facebook/Instagram deben ser la URL real del \
 perfil de la EMPRESA (no de una persona, no un enlace genérico a la red).
 - No repitas empresas.
-- Sé directo: no dediques búsquedas a empresas que ya descartaste, no repitas \
-verificaciones de un mismo dato.
 
-Responde ÚNICAMENTE con un array JSON (sin texto antes ni después, sin \
-bloque de código markdown) con este formato exacto:
+FORMATO DE SALIDA (obligatorio):
+- Responde ÚNICAMENTE con el array JSON. Nada de texto antes ni después.
+- NO saludes, NO expliques lo que vas a hacer, NO expliques tu razonamiento, \
+NO uses bloque de código markdown (```). La primera letra de tu respuesta \
+debe ser "[" y la última "]".
 
 [
   {{
@@ -57,6 +62,37 @@ bloque de código markdown) con este formato exacto:
   }}
 ]
 """
+
+PROMPT_COMPRADORES = """\
+Eres un asistente de investigación B2B para un exportador colombiano que \
+busca compradores potenciales para sus productos.
+
+Usa la búsqueda de Google para encontrar EMPRESAS REALES que coincidan con \
+esta descripción: "{consulta}"
+
+""" + REGLAS_COMUNES
+
+PROMPT_PLANTILLA = PROMPT_COMPRADORES  # alias retrocompatible
+
+PROMPT_PROVEEDORES = """\
+Eres un asistente de investigación para ISYN, una empresa de subastas y \
+corretaje de negocios que busca EMPRESAS QUE NECESITEN VENDER O SUBASTAR \
+ACTIVOS — no busques compradores, busca posibles consignantes/proveedores.
+
+Usa la búsqueda de Google para encontrar EMPRESAS REALES que coincidan con \
+esta descripción: "{consulta}"
+
+Da prioridad a empresas con señales recientes de que podrían necesitar un \
+servicio de subasta o venta de activos: cierre de operaciones, \
+reestructuración, liquidación, desmantelamiento de plantas o equipos, \
+quiebra, fusión o adquisición reciente, reducción de personal a gran \
+escala, o venta anunciada de maquinaria/inventario/flota.
+
+En el campo "resumen" explica brevemente QUÉ señal encontraste de que esta \
+empresa podría necesitar vender o subastar algo (ej. "anunció el cierre de \
+su planta en Cali en marzo 2026").
+
+""" + REGLAS_COMUNES
 
 
 class BusquedaIAError(Exception):
@@ -78,10 +114,23 @@ def _extraer_json(texto):
         raise BusquedaIAError(f'No se pudo interpretar la respuesta de la IA: {exc}') from exc
 
 
-def buscar_empresas(consulta, maximo=8):
-    """Devuelve (lista_de_empresas, lista_de_fuentes). Lanza BusquedaIAError
-    con un mensaje entendible si algo falla (sin API key, sin crédito, la
-    IA no devolvió JSON válido, etc.)."""
+def buscar_empresas(consulta, maximo=MAXIMO_POR_DEFECTO):
+    """Devuelve (lista_de_empresas, lista_de_fuentes) de posibles COMPRADORES."""
+    maximo = min(maximo, MAXIMO_TECHO)
+    return _buscar_con_ia(PROMPT_COMPRADORES.format(consulta=consulta.strip(), maximo=maximo))
+
+
+def buscar_proveedores(consulta, maximo=MAXIMO_POR_DEFECTO):
+    """Devuelve (lista_de_empresas, lista_de_fuentes) de posibles PROVEEDORES/
+    consignantes — empresas que podrían necesitar vender o subastar activos."""
+    maximo = min(maximo, MAXIMO_TECHO)
+    return _buscar_con_ia(PROMPT_PROVEEDORES.format(consulta=consulta.strip(), maximo=maximo))
+
+
+def _buscar_con_ia(prompt):
+    """Llama a Gemini con grounding real y devuelve (lista_de_empresas, lista_de_fuentes).
+    Lanza BusquedaIAError con un mensaje entendible si algo falla (sin API key,
+    sin crédito, la IA no devolvió JSON válido, etc.)."""
     if not settings.GEMINI_API_KEY:
         raise BusquedaIAError(
             'La búsqueda con IA no está configurada (falta GEMINI_API_KEY).'
@@ -106,7 +155,7 @@ def buscar_empresas(consulta, maximo=8):
         config = types.GenerateContentConfig(tools=[grounding_tool])
         response = client.models.generate_content(
             model='gemini-3.7-flash',
-            contents=PROMPT_PLANTILLA.format(consulta=consulta.strip(), maximo=maximo),
+            contents=prompt,
             config=config,
         )
     except Exception as exc:  # noqa: BLE001 — cualquier falla de red/API debe verse como mensaje amigable
@@ -133,6 +182,8 @@ def buscar_empresas(consulta, maximo=8):
             'instagram_url': str(item.get('instagram_url', ''))[:200],
             'resumen': str(item.get('resumen', ''))[:300],
         })
+        if len(empresas) >= MAXIMO_TECHO:
+            break  # tope duro en código: no confiamos solo en que el prompt se respete
 
     fuentes = []
     try:

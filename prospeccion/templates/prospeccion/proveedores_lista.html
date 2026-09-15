@@ -1,0 +1,171 @@
+{% extends 'base.html' %}
+{% load icons humanize_extra %}
+{% block title %}Proveedores{% endblock %}
+{% block page_title %}Proveedores y consignantes{% endblock %}
+{% block page_subtitle %}
+<div class="subtitle">{{ total_proveedores }} proveedor{{ total_proveedores|pluralize:"es" }} en tu pipeline</div>
+{% endblock %}
+{% block content %}
+
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'proveedor_nuevo' %}" class="btn btn-primary">+ Nuevo proveedor</a>
+</div>
+
+<div class="funnel">
+    <div class="funnel-track">
+        {% for etapa in embudo %}
+            {% if etapa.cantidad > 0 %}
+            <a href="?{% if querystring_sin_estado %}{{ querystring_sin_estado }}&{% endif %}estado={{ etapa.valor }}"
+               class="funnel-seg funnel-seg-{{ forloop.counter0 }}{% if etapa.activo %} is-active{% endif %}"
+               style="width: {{ etapa.pct }}%"
+               title="{{ etapa.etiqueta }}: {{ etapa.cantidad }}"></a>
+            {% endif %}
+        {% endfor %}
+    </div>
+    <div class="funnel-legend">
+        {% for etapa in embudo %}
+        <a href="?{% if querystring_sin_estado %}{{ querystring_sin_estado }}&{% endif %}estado={{ etapa.valor }}" class="{% if etapa.activo %}is-active{% endif %}">
+            <span class="dot funnel-seg-{{ forloop.counter0 }}"></span>
+            {{ etapa.etiqueta }} <span class="count">{{ etapa.cantidad }}</span>
+        </a>
+        {% endfor %}
+        {% if filtros.estado %}
+            <a href="?{{ querystring_sin_estado }}" class="text-muted-soft">Ver todos</a>
+        {% endif %}
+    </div>
+</div>
+
+<form method="get" class="filter-bar">
+    <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+            <label class="form-label d-block">Buscar</label>
+            <div class="search-field">
+                {% icon 'search' size=16 %}
+                <input type="text" name="q" value="{{ filtros.q }}" class="form-control" placeholder="Empresa, país o sector">
+            </div>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">Estado</label>
+            <select name="estado" class="form-select">
+                <option value="">Todos</option>
+                {% for value, label in estados %}
+                    <option value="{{ value }}" {% if filtros.estado == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">País</label>
+            <select name="pais" class="form-select">
+                <option value="">Todos</option>
+                {% for p in paises %}
+                    <option value="{{ p }}" {% if filtros.pais == p %}selected{% endif %}>{{ p }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">Sector</label>
+            <select name="sector" class="form-select">
+                <option value="">Todos</option>
+                {% for s in sectores %}
+                    <option value="{{ s }}" {% if filtros.sector == s %}selected{% endif %}>{{ s }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-2">
+            <label class="form-label d-block">Fuente</label>
+            <select name="fuente" class="form-select">
+                <option value="">Todas</option>
+                {% for value, label in fuentes %}
+                    <option value="{{ value }}" {% if filtros.fuente == value %}selected{% endif %}>{{ label }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
+        <a href="{% url 'proveedores_lista' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+    </div>
+</form>
+
+<div class="table-panel">
+    <div class="table-responsive">
+        <table class="table table-modern align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Empresa</th>
+                    <th>País / Ciudad</th>
+                    <th>Sector</th>
+                    <th>Fuente</th>
+                    <th>Estado</th>
+                    <th>Último contacto</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for proveedor in page_obj %}
+                <tr>
+                    <td>
+                        <a class="row-link" href="{% url 'proveedor_detalle' proveedor.pk %}">{{ proveedor.nombre_empresa }}</a>
+                    </td>
+                    <td class="text-muted-soft">
+                        {% if proveedor.es_internacional %}<span class="intl-mark" title="Proveedor internacional">{% icon 'globe' size=14 %}</span>{% endif %}{{ proveedor.pais }}{% if proveedor.ciudad %} · {{ proveedor.ciudad }}{% endif %}
+                    </td>
+                    <td>{% if proveedor.sector %}<span class="pill pill-muted">{{ proveedor.sector }}</span>{% else %}—{% endif %}</td>
+                    <td class="text-muted-soft">{{ proveedor.get_fuente_display }}</td>
+                    <td>
+                        {% if proveedor.es_descartado %}
+                        <span class="stage stage-dropped">
+                            <span class="stage-mark">{% icon 'x' size=14 %}</span>
+                            <span class="stage-label">Descartado</span>
+                        </span>
+                        {% else %}
+                        <span class="stage">
+                            <span class="stage-track"><span class="stage-fill{% if proveedor.estado == 'consigno' %} is-won{% endif %}" style="width: {% widthratio proveedor.etapa_indice|add:1 4 100 %}%"></span></span>
+                            <span class="stage-label">{{ proveedor.get_estado_display }}</span>
+                        </span>
+                        {% endif %}
+                    </td>
+                    <td class="text-muted-soft">{{ proveedor.fecha_ultimo_contacto|hace }}</td>
+                    <td class="text-end">
+                        <div class="action-cluster">
+                            {% if proveedor.email %}
+                            <a class="icon-btn icon-btn-mail" href="{{ proveedor.mailto_url }}" title="Enviar correo" aria-label="Enviar correo a {{ proveedor.nombre_empresa }}">{% icon 'mail' %}</a>
+                            {% endif %}
+                            {% if proveedor.whatsapp_url %}
+                            <a class="icon-btn icon-btn-chat" href="{{ proveedor.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp" aria-label="Contactar a {{ proveedor.nombre_empresa }} por WhatsApp">{% icon 'chat' %}</a>
+                            {% endif %}
+                            <form method="post" action="{% url 'proveedor_marcar_contactado' proveedor.pk %}" class="d-inline">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="icon-btn icon-btn-done" title="Marcar como contactado" aria-label="Marcar {{ proveedor.nombre_empresa }} como contactado">{% icon 'check' %}</button>
+                            </form>
+                        </div>
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="7">
+                    <div class="empty-state">
+                        {% icon 'inbox' size=30 %}
+                        <p>No hay proveedores que coincidan con los filtros.</p>
+                    </div>
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+{% if page_obj.has_other_pages %}
+<nav class="mt-3">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}&{{ querystring }}">{% icon 'chevron-left' size=14 %}</a></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+            <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}&{{ querystring }}">{% icon 'chevron-right' size=14 %}</a></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endblock %}

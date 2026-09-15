@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% load icons %}
+{% block title %}{{ proveedor.nombre_empresa }}{% endblock %}
+{% block page_title %}{{ proveedor.nombre_empresa }}{% endblock %}
+{% block page_subtitle %}
+<div class="subtitle">{{ proveedor.pais }}{% if proveedor.ciudad %} · {{ proveedor.ciudad }}{% endif %}{% if proveedor.sector %} · {{ proveedor.sector }}{% endif %}</div>
+{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-end mb-3">
+    <a href="{% url 'proveedor_editar' proveedor.pk %}" class="btn btn-outline-secondary btn-sm">Editar</a>
+    <form method="post" action="{% url 'proveedor_eliminar' proveedor.pk %}" class="d-inline" onsubmit="return confirm('¿Eliminar este proveedor?');">
+        {% csrf_token %}
+        <button type="submit" class="btn btn-outline-danger btn-sm">Eliminar</button>
+    </form>
+</div>
+
+<div class="row">
+    <div class="col-md-5">
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">Datos de contacto</h5>
+                <div class="contact-list mb-3">
+                    {% if proveedor.email %}
+                    <a class="contact-row" href="{{ proveedor.mailto_url }}">
+                        <span class="icon-btn icon-btn-mail">{% icon 'mail' %}</span>
+                        <span class="contact-value">{{ proveedor.email }}</span>
+                    </a>
+                    {% endif %}
+                    {% if proveedor.telefono %}
+                    <a class="contact-row" href="{{ proveedor.whatsapp_url }}" target="_blank" rel="noopener">
+                        <span class="icon-btn icon-btn-chat">{% icon 'chat' %}</span>
+                        <span class="contact-value">{{ proveedor.telefono }}</span>
+                    </a>
+                    {% endif %}
+                    {% if proveedor.linkedin_url %}
+                    <a class="contact-row" href="{{ proveedor.linkedin_url }}" target="_blank" rel="noopener">
+                        <span class="icon-btn icon-btn-link">{% icon 'linkedin' %}</span>
+                        <span class="contact-value">LinkedIn</span>
+                    </a>
+                    {% endif %}
+                    {% if proveedor.facebook_url %}
+                    <a class="contact-row" href="{{ proveedor.facebook_url }}" target="_blank" rel="noopener">
+                        <span class="icon-btn icon-btn-link">{% icon 'facebook' %}</span>
+                        <span class="contact-value">Facebook</span>
+                    </a>
+                    {% endif %}
+                    {% if proveedor.instagram_url %}
+                    <a class="contact-row" href="{{ proveedor.instagram_url }}" target="_blank" rel="noopener">
+                        <span class="icon-btn icon-btn-link">{% icon 'instagram' %}</span>
+                        <span class="contact-value">Instagram</span>
+                    </a>
+                    {% endif %}
+                    {% if proveedor.sitio_web %}
+                    <a class="contact-row" href="{{ proveedor.sitio_web }}" target="_blank" rel="noopener">
+                        <span class="icon-btn icon-btn-link">{% icon 'link' %}</span>
+                        <span class="contact-value">Sitio web</span>
+                    </a>
+                    {% endif %}
+                    {% if not proveedor.email and not proveedor.telefono and not proveedor.linkedin_url and not proveedor.facebook_url and not proveedor.instagram_url and not proveedor.sitio_web %}
+                    <p class="text-muted-soft small mb-0">Sin datos de contacto todavía — <a href="{% url 'proveedor_editar' proveedor.pk %}">agrégalos aquí</a>.</p>
+                    {% endif %}
+                </div>
+                <p class="mb-2"><span class="text-muted-soft">Fuente</span><br>{{ proveedor.get_fuente_display }}</p>
+                <p class="mb-2"><span class="text-muted-soft">Estado</span><br>
+                    {% if proveedor.es_descartado %}
+                    <span class="stage stage-dropped">
+                        <span class="stage-mark">{% icon 'x' size=14 %}</span>
+                        <span class="stage-label">Descartado</span>
+                    </span>
+                    {% else %}
+                    <span class="stage">
+                        <span class="stage-track"><span class="stage-fill{% if proveedor.estado == 'consigno' %} is-won{% endif %}" style="width: {% widthratio proveedor.etapa_indice|add:1 4 100 %}%"></span></span>
+                        <span class="stage-label">{{ proveedor.get_estado_display }}</span>
+                    </span>
+                    {% endif %}
+                </p>
+                <p class="mb-0"><span class="text-muted-soft">Último contacto</span><br>{{ proveedor.fecha_ultimo_contacto|date:'d/m/Y H:i'|default:'Nunca' }}</p>
+            </div>
+        </div>
+        {% if proveedor.notas %}
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-2">Notas de seguimiento</h5>
+                <p class="mb-0" style="white-space: pre-wrap;">{{ proveedor.notas }}</p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="col-md-7">
+        <div class="panel mb-3">
+            <div class="panel-body">
+                <h5 class="mb-3">Registrar contacto</h5>
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="row g-2">
+                        <div class="col-md-4">
+                            {{ form.medio }}
+                        </div>
+                        <div class="col-md-8">
+                            {{ form.resultado }}
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm mt-2">Guardar</button>
+                </form>
+            </div>
+        </div>
+
+        <h5 class="mb-2">Historial de contacto</h5>
+        <div class="panel">
+            <ul class="list-group list-group-flush">
+                {% for h in historial %}
+                <li class="list-group-item">
+                    <div class="d-flex justify-content-between">
+                        <strong>{{ h.get_medio_display }}</strong>
+                        <span class="text-muted-soft small">{{ h.fecha|date:'d/m/Y H:i' }}{% if h.usuario %} · {{ h.usuario.username }}{% endif %}</span>
+                    </div>
+                    {% if h.resultado %}<p class="mb-0 mt-1">{{ h.resultado }}</p>{% endif %}
+                </li>
+                {% empty %}
+                <li class="list-group-item">
+                    <div class="empty-state py-3">
+                        {% icon 'inbox' size=26 %}
+                        <p>Aún no hay contactos registrados.</p>
+                    </div>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}

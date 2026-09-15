@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
-{% block title %}Importar compradores{% endblock %}
-{% block page_title %}Importar compradores{% endblock %}
-{% block page_subtitle %}<div class="subtitle">Carga masiva desde CSV o Excel (Procolombia, cámaras de comercio, LinkedIn Sales Navigator, Apollo)</div>{% endblock %}
+{% block title %}Importar productos{% endblock %}
+{% block page_title %}Importar productos{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Carga masiva de inventario desde CSV o Excel (vehículos, motores, chatarra, accesorios)</div>{% endblock %}
 {% block content %}
 <div class="row g-3">
     <div class="col-md-6">
@@ -23,9 +23,9 @@
         <div class="panel mt-3">
             <div class="panel-body">
                 <h6 class="mb-2">Columnas esperadas</h6>
-                <p class="small text-muted-soft mb-1">Obligatoria: <code>nombre_empresa</code></p>
-                <p class="small text-muted-soft mb-0">Opcionales: <code>pais</code>, <code>ciudad</code>, <code>sector</code>, <code>email</code>, <code>telefono</code>, <code>linkedin</code>, <code>facebook</code>, <code>instagram</code>, <code>sitio_web</code>, <code>fuente</code> (hunter, apollo, procolombia, camara_comercio, linkedin, manual), <code>palabras_clave</code> (separadas por coma)</p>
-                <p class="small text-muted-soft mb-0 mt-2"><code>palabras_clave</code> se usa para las alertas automáticas: si un producto nuevo coincide, se le avisa a este comprador por correo sin que nadie tenga que hacerlo a mano.</p>
+                <p class="small text-muted-soft mb-1">Obligatoria: <code>nombre</code></p>
+                <p class="small text-muted-soft mb-0">Opcionales: <code>categoria</code>, <code>descripcion</code>, <code>cantidad_disponible</code>, <code>precio_referencia</code>, <code>valor_estimado</code>, <code>condiciones_venta</code>, <code>referencia</code>, <code>confidencial</code> (si/no), <code>proveedor_nombre</code>, <code>proveedor_contacto</code>, <code>proveedor_email</code>, <code>proveedor_telefono</code></p>
+                <p class="small text-muted-soft mb-0 mt-2"><code>referencia</code> se usa para evitar duplicados: si ya existe un producto con esa referencia, la fila se omite. Si no traes referencia, el producto siempre se crea como nuevo.</p>
             </div>
         </div>
     </div>
@@ -35,7 +35,7 @@
         <div class="panel">
             <div class="panel-body">
                 <h5 class="mb-2">Resultado de la importación</h5>
-                <p><strong>{{ resumen.creados }}</strong> compradores creados.</p>
+                <p><strong>{{ resumen.creados }}</strong> productos creados.</p>
                 {% if resumen.errores %}
                 <p class="text-danger mb-1">Filas con problemas:</p>
                 <ul class="small mb-0">

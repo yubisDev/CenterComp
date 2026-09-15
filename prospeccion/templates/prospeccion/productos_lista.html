@@ -29,7 +29,8 @@
     </div>
 </form>
 
-<div class="d-flex justify-content-end mb-3">
+<div class="d-flex justify-content-end gap-2 mb-3">
+    <a href="{% url 'productos_importar' %}" class="btn btn-outline-secondary">{% icon 'upload' size=15 %} Importar</a>
     <a href="{% url 'producto_nuevo' %}" class="btn btn-primary">+ Nuevo producto</a>
 </div>
 

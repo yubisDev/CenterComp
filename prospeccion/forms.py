@@ -1,6 +1,6 @@
 from django import forms
 
-from .models import Comprador, HistorialContacto, PlantillaMensaje, Producto
+from .models import Comprador, HistorialContacto, HistorialContactoProveedor, PlantillaMensaje, Producto, Proveedor
 
 
 class CompradorForm(forms.ModelForm):
@@ -10,7 +10,7 @@ class CompradorForm(forms.ModelForm):
             'nombre_empresa', 'pais', 'ciudad', 'sector',
             'email', 'telefono', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
             'fuente', 'estado',
-            'productos_interes', 'notas',
+            'productos_interes', 'palabras_clave_interes', 'notas',
         ]
         widgets = {
             'notas': forms.Textarea(attrs={'rows': 4}),
@@ -86,7 +86,54 @@ class HistorialContactoForm(forms.ModelForm):
 class ImportarCompradoresForm(forms.Form):
     archivo = forms.FileField(
         label='Archivo CSV o Excel',
-        help_text='Columnas esperadas: nombre_empresa, pais, ciudad, sector, email, telefono, fuente',
+        help_text='Columnas esperadas: nombre_empresa, pais, ciudad, sector, email, telefono, fuente, '
+                   'palabras_clave (opcional, separadas por coma — para alertas automáticas de inventario)',
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.csv,.xlsx,.xls'}),
+    )
+
+
+class ProveedorForm(forms.ModelForm):
+    class Meta:
+        model = Proveedor
+        fields = [
+            'nombre_empresa', 'pais', 'ciudad', 'sector',
+            'email', 'telefono', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
+            'fuente', 'estado', 'notas',
+        ]
+        widgets = {
+            'notas': forms.Textarea(attrs={'rows': 4}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field in self.fields.values():
+            css = field.widget.attrs.get('class', '')
+            if isinstance(field.widget, forms.Select):
+                field.widget.attrs['class'] = (css + ' form-select').strip()
+            else:
+                field.widget.attrs['class'] = (css + ' form-control').strip()
+
+
+class HistorialContactoProveedorForm(forms.ModelForm):
+    class Meta:
+        model = HistorialContactoProveedor
+        fields = ['medio', 'resultado']
+        widgets = {
+            'resultado': forms.Textarea(attrs={'rows': 3}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['medio'].widget.attrs['class'] = 'form-select'
+        self.fields['resultado'].widget.attrs['class'] = 'form-control'
+
+
+class ImportarProductosForm(forms.Form):
+    archivo = forms.FileField(
+        label='Archivo CSV o Excel',
+        help_text='Obligatoria: nombre. Opcionales: categoria, descripcion, cantidad_disponible, precio_referencia, '
+                   'valor_estimado, condiciones_venta, referencia, confidencial, proveedor_nombre, '
+                   'proveedor_contacto, proveedor_email, proveedor_telefono',
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.csv,.xlsx,.xls'}),
     )
 

@@ -37,6 +37,9 @@
             <a href="{% url 'compradores_lista' %}" class="{% if request.resolver_match.url_name == 'compradores_lista' %}active{% endif %}">
                 <span class="icon">{% icon 'users' size=17 %}</span> Compradores
             </a>
+            <a href="{% url 'proveedores_lista' %}" class="{% if request.resolver_match.url_name == 'proveedores_lista' or request.resolver_match.url_name == 'proveedor_detalle' %}active{% endif %}">
+                <span class="icon">{% icon 'box' size=17 %}</span> Proveedores
+            </a>
             <a href="{% url 'productos_lista' %}" class="{% if request.resolver_match.url_name == 'productos_lista' or request.resolver_match.url_name == 'producto_detalle' %}active{% endif %}">
                 <span class="icon">{% icon 'box' size=17 %}</span> Productos
             </a>
@@ -50,7 +53,10 @@
                 <span class="icon">{% icon 'upload' size=17 %}</span> Importar
             </a>
             <a href="{% url 'compradores_buscar_ia' %}" class="{% if request.resolver_match.url_name == 'compradores_buscar_ia' %}active{% endif %}">
-                <span class="icon">{% icon 'sparkle' size=17 %}</span> Buscar con IA
+                <span class="icon">{% icon 'sparkle' size=17 %}</span> Buscar compradores IA
+            </a>
+            <a href="{% url 'proveedores_buscar_ia' %}" class="{% if request.resolver_match.url_name == 'proveedores_buscar_ia' %}active{% endif %}">
+                <span class="icon">{% icon 'sparkle' size=17 %}</span> Buscar proveedores IA
             </a>
             <a href="{% url 'compradores_envio_masivo' %}" class="{% if request.resolver_match.url_name == 'compradores_envio_masivo' %}active{% endif %}">
                 <span class="icon">{% icon 'mail' size=17 %}</span> Envío masivo

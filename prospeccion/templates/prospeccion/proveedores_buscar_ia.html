@@ -1,8 +1,8 @@
 {% extends 'base.html' %}
 {% load icons %}
-{% block title %}Buscar con IA{% endblock %}
-{% block page_title %}Buscar compradores con IA{% endblock %}
-{% block page_subtitle %}<div class="subtitle">Busca empresas reales en la web y revisa antes de guardarlas en tu pipeline</div>{% endblock %}
+{% block title %}Buscar proveedores con IA{% endblock %}
+{% block page_title %}Buscar proveedores/consignantes con IA{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Busca empresas que podrían necesitar vender o subastar activos, y revisa antes de guardarlas</div>{% endblock %}
 {% block content %}
 
 {% if not ia_configurada %}
@@ -17,7 +17,7 @@
 </div>
 {% endif %}
 
-<form method="post" action="{% url 'compradores_buscar_ia_ejecutar' %}" class="filter-bar mb-3" id="formBuscarIA">
+<form method="post" action="{% url 'proveedores_buscar_ia_ejecutar' %}" class="filter-bar mb-3" id="formBuscarIA">
     {% csrf_token %}
     <label class="form-label d-block">{{ form.consulta.label }}</label>
     <div class="d-flex gap-2">
@@ -27,7 +27,7 @@
             <span class="btn-buscar-loading {% if busqueda.estado != 'pendiente' %}d-none{% endif %}"><span class="spinner"></span> Buscando…</span>
         </button>
     </div>
-    <div class="form-text mt-2" id="textoAyudaIA">Ej. "empresas de electrónica en México", "importadores de audífonos en España"</div>
+    <div class="form-text mt-2" id="textoAyudaIA">Ej. "empresas de telecomunicaciones cerrando operaciones en Centroamérica", "empresas liquidando maquinaria industrial en Colombia"</div>
 </form>
 
 <div class="panel mb-3 {% if not busqueda or busqueda.estado != 'pendiente' %}d-none{% endif %}" id="avisoCargandoIA">
@@ -51,7 +51,7 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
 
 {% if busqueda and busqueda.estado == 'pendiente' %}
 (function () {
-    var url = '{% url "compradores_buscar_ia_estado" busqueda.pk %}';
+    var url = '{% url "proveedores_buscar_ia_estado" busqueda.pk %}';
     var intervalo = setInterval(function () {
         fetch(url).then(function (r) { return r.json(); }).then(function (data) {
             if (data.estado !== 'pendiente') {
@@ -70,7 +70,7 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
     <div>Estos resultados los encontró una IA buscando en la web pública. <strong>Pueden tener errores</strong> — revisa cada uno antes de guardarlo, y verifica el dato de contacto antes de escribirle a alguien.</div>
 </div>
 
-<form method="post" action="{% url 'compradores_buscar_ia_guardar' %}">
+<form method="post" action="{% url 'proveedores_buscar_ia_guardar' %}">
     {% csrf_token %}
     <div class="table-panel mb-3">
         <div class="table-responsive">
@@ -82,6 +82,7 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
                         </th>
                         <th>Empresa</th>
                         <th>País / Sector</th>
+                        <th>Por qué podría vender</th>
                         <th>Contacto encontrado</th>
                     </tr>
                 </thead>
@@ -89,11 +90,9 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
                 {% for empresa in resultados %}
                     <tr>
                         <td><input type="checkbox" class="form-check-input fila-seleccion" name="seleccion" value="{{ forloop.counter0 }}"></td>
-                        <td>
-                            <strong>{{ empresa.nombre_empresa }}</strong>
-                            {% if empresa.resumen %}<div class="text-muted-soft small">{{ empresa.resumen }}</div>{% endif %}
-                        </td>
+                        <td><strong>{{ empresa.nombre_empresa }}</strong></td>
                         <td class="text-muted-soft">{{ empresa.pais }}{% if empresa.ciudad %} · {{ empresa.ciudad }}{% endif %}{% if empresa.sector %}<br>{{ empresa.sector }}{% endif %}</td>
+                        <td class="text-muted-soft small">{{ empresa.resumen|default:'—' }}</td>
                         <td>
                             {% if empresa.email %}<div>{% icon 'mail' size=14 %} {{ empresa.email }}</div>{% endif %}
                             {% if empresa.telefono %}<div>{% icon 'chat' size=14 %} {{ empresa.telefono }}</div>{% endif %}
@@ -105,7 +104,7 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
                         </td>
                     </tr>
                 {% empty %}
-                    <tr><td colspan="4">
+                    <tr><td colspan="5">
                         <div class="empty-state">
                             {% icon 'inbox' size=30 %}
                             <p>No se encontraron empresas para esa búsqueda.</p>
@@ -120,7 +119,7 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
     {% if resultados %}
     <div class="d-flex gap-2 mb-3">
         <button type="submit" class="btn btn-primary">Guardar seleccionados</button>
-        <button type="submit" formaction="{% url 'compradores_buscar_ia_descartar' %}" class="btn btn-outline-secondary">Descartar todo</button>
+        <button type="submit" formaction="{% url 'proveedores_buscar_ia_descartar' %}" class="btn btn-outline-secondary">Descartar todo</button>
     </div>
     {% endif %}
 </form>

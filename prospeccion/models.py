@@ -83,6 +83,12 @@ class Comprador(models.Model):
 
     productos_interes = models.ManyToManyField(Producto, blank=True, related_name='compradores_interesados')
 
+    palabras_clave_interes = models.CharField(
+        'Palabras clave de interés', max_length=300, blank=True,
+        help_text='Separadas por coma. Ej: "chatarra, motor cummins, vehiculos pesados". '
+                   'Cuando entre un producto nuevo que coincida, se le avisa a este comprador automáticamente.',
+    )
+
     notas = models.TextField('Notas de seguimiento', blank=True)
     fecha_ultimo_contacto = models.DateTimeField(null=True, blank=True)
 
@@ -139,6 +145,91 @@ class HistorialContacto(models.Model):
         return f'{self.comprador} - {self.get_medio_display()} - {self.fecha:%Y-%m-%d}'
 
 
+class Proveedor(models.Model):
+    """Empresas o personas que le dan inventario a ISYN para vender/subastar
+    (consignantes) — el lado opuesto de Comprador. Incluye chatarreros que
+    llegan directo y empresas encontradas con la búsqueda con IA."""
+
+    class Estado(models.TextChoices):
+        POR_CONTACTAR = 'por_contactar', 'Por contactar'
+        CONTACTADO = 'contactado', 'Contactado'
+        NEGOCIANDO = 'negociando', 'Negociando'
+        CONSIGNO = 'consigno', 'Consignó inventario'
+        DESCARTADO = 'descartado', 'Descartado'
+
+    class Fuente(models.TextChoices):
+        CHATARREO = 'chatarreo', 'Chatarreo'
+        IA = 'ia', 'Búsqueda con IA'
+        MANUAL = 'manual', 'Manual'
+        OTRO = 'otro', 'Otro'
+
+    nombre_empresa = models.CharField(max_length=200)
+    pais = models.CharField(max_length=100, blank=True)
+    ciudad = models.CharField(max_length=100, blank=True)
+    sector = models.CharField(max_length=120, blank=True)
+
+    email = models.EmailField(blank=True)
+    telefono = models.CharField(
+        'Teléfono / WhatsApp', max_length=30, blank=True,
+        help_text='Incluir indicativo de país, ej: +57 300 1234567',
+    )
+    linkedin_url = models.URLField('LinkedIn', blank=True)
+    facebook_url = models.URLField('Facebook', blank=True)
+    instagram_url = models.URLField('Instagram', blank=True)
+    sitio_web = models.URLField('Sitio web', blank=True)
+
+    fuente = models.CharField(max_length=30, choices=Fuente.choices, default=Fuente.MANUAL)
+    estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.POR_CONTACTAR)
+
+    notas = models.TextField('Notas de seguimiento', blank=True)
+    fecha_ultimo_contacto = models.DateTimeField(null=True, blank=True)
+
+    responsable = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='proveedores_asignados',
+    )
+
+    creado_en = models.DateTimeField(auto_now_add=True)
+    actualizado_en = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['-creado_en']
+        indexes = [
+            models.Index(fields=['estado']),
+            models.Index(fields=['pais']),
+            models.Index(fields=['sector']),
+            models.Index(fields=['fuente']),
+        ]
+
+    def __str__(self):
+        return f'{self.nombre_empresa} ({self.pais})' if self.pais else self.nombre_empresa
+
+    def get_absolute_url(self):
+        return reverse('proveedor_detalle', args=[self.pk])
+
+    @property
+    def whatsapp_numero(self):
+        return ''.join(ch for ch in self.telefono if ch.isdigit())
+
+
+class HistorialContactoProveedor(models.Model):
+    proveedor = models.ForeignKey(Proveedor, on_delete=models.CASCADE, related_name='historial')
+    fecha = models.DateTimeField(auto_now_add=True)
+    medio = models.CharField(max_length=20, choices=HistorialContacto.Medio.choices, default=HistorialContacto.Medio.EMAIL)
+    resultado = models.TextField(blank=True)
+    usuario = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+
+    class Meta:
+        ordering = ['-fecha']
+        verbose_name = 'Historial de contacto (proveedor)'
+        verbose_name_plural = 'Historial de contactos (proveedores)'
+
+    def __str__(self):
+        return f'{self.proveedor} - {self.get_medio_display()} - {self.fecha:%Y-%m-%d}'
+
+
 class PlantillaMensaje(models.Model):
     class Tipo(models.TextChoices):
         EMAIL = 'email', 'Correo'
@@ -186,6 +277,11 @@ class BusquedaIA(models.Model):
         LISTO = 'listo', 'Listo'
         ERROR = 'error', 'Error'
 
+    class Tipo(models.TextChoices):
+        COMPRADOR = 'comprador', 'Buscar compradores'
+        PROVEEDOR = 'proveedor', 'Buscar proveedores/consignantes'
+
+    tipo = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.COMPRADOR)
     consulta = models.CharField(max_length=300)
     creado_en = models.DateTimeField(auto_now_add=True)
     usuario = models.ForeignKey(

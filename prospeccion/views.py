@@ -1,6 +1,7 @@
 import csv
 import io
 import threading
+from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 
 from django.conf import settings
@@ -20,11 +21,22 @@ from .forms import (
     BusquedaIAForm,
     CompradorForm,
     HistorialContactoForm,
+    HistorialContactoProveedorForm,
     ImportarCompradoresForm,
+    ImportarProductosForm,
     PlantillaMensajeForm,
     ProductoForm,
+    ProveedorForm,
 )
-from .models import BusquedaIA, Comprador, HistorialContacto, PlantillaMensaje, Producto
+from .models import (
+    BusquedaIA,
+    Comprador,
+    HistorialContacto,
+    HistorialContactoProveedor,
+    PlantillaMensaje,
+    Producto,
+    Proveedor,
+)
 from .texto import titulo_inteligente
 
 _SIN_CARGAR = object()  # centinela: "no me pasaron la plantilla, búscala tú" (distinto de None = "ya sé que no hay")
@@ -421,6 +433,112 @@ def _procesar_importacion(archivo):
             instagram_url=fila.get('instagram') or '',
             sitio_web=fila.get('sitio_web') or fila.get('web') or fila.get('website') or '',
             fuente=fuente,
+            palabras_clave_interes=(
+                fila.get('palabras_clave') or fila.get('palabras_clave_interes') or fila.get('intereses') or ''
+            )[:300],
+        )
+        creados += 1
+
+    return {'creados': creados, 'errores': errores}
+
+
+@login_required
+def productos_importar(request):
+    resumen = None
+    if request.method == 'POST':
+        form = ImportarProductosForm(request.POST, request.FILES)
+        if form.is_valid():
+            resumen = _procesar_importacion_productos(form.cleaned_data['archivo'])
+            if resumen['errores']:
+                messages.warning(request, f"Importación completada con {len(resumen['errores'])} error(es).")
+            else:
+                messages.success(request, f"Se importaron {resumen['creados']} productos nuevos.")
+    else:
+        form = ImportarProductosForm()
+    return render(request, 'prospeccion/productos_importar.html', {'form': form, 'resumen': resumen})
+
+
+def _valor_booleano(texto):
+    return (texto or '').strip().lower() in ('si', 'sí', 'true', '1', 'x', 'yes')
+
+
+def _procesar_importacion_productos(archivo):
+    nombre_archivo = archivo.name.lower()
+    filas = []
+    errores = []
+
+    if archivo.size > IMPORTACION_TAMANO_MAXIMO:
+        return {'creados': 0, 'errores': ['El archivo supera el tamaño máximo permitido (10 MB).']}
+
+    if nombre_archivo.endswith('.csv'):
+        contenido = archivo.read().decode('utf-8-sig', errors='replace')
+        lector = csv.DictReader(io.StringIO(contenido))
+        for fila in lector:
+            filas.append({(k or '').strip().lower(): (v or '').strip() for k, v in fila.items()})
+    elif nombre_archivo.endswith('.xlsx') or nombre_archivo.endswith('.xls'):
+        import openpyxl
+
+        wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
+        ws = wb.active
+        filas_iter = ws.iter_rows(values_only=True)
+        encabezados = [str(h).strip().lower() if h else '' for h in next(filas_iter)]
+        for fila in filas_iter:
+            valores = {}
+            for header, valor in zip(encabezados, fila):
+                if header:
+                    valores[header] = str(valor).strip() if valor is not None else ''
+            if any(valores.values()):
+                filas.append(valores)
+    else:
+        return {'creados': 0, 'errores': ['Formato de archivo no soportado. Usa CSV o Excel (.xlsx).']}
+
+    creados = 0
+    for i, fila in enumerate(filas, start=2):
+        nombre = fila.get('nombre') or ''
+        if not nombre:
+            errores.append(f'Fila {i}: falta nombre, se omitió.')
+            continue
+        nombre = titulo_inteligente(nombre)
+
+        referencia = fila.get('referencia') or ''
+        if referencia and Producto.objects.filter(referencia__iexact=referencia).exists():
+            errores.append(f'Fila {i}: la referencia "{referencia}" ya existe, se omitió (duplicado).')
+            continue
+
+        cantidad_raw = fila.get('cantidad_disponible') or ''
+        try:
+            cantidad_disponible = int(float(cantidad_raw)) if cantidad_raw else 0
+            if cantidad_disponible < 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            if cantidad_raw:
+                errores.append(f'Fila {i}: cantidad_disponible "{cantidad_raw}" no es válida, se puso en 0.')
+            cantidad_disponible = 0
+
+        def _decimal_o_advertencia(campo):
+            crudo = fila.get(campo) or ''
+            if not crudo:
+                return None
+            try:
+                return Decimal(crudo.replace(',', ''))
+            except InvalidOperation:
+                errores.append(f'Fila {i}: {campo} "{crudo}" no es válido, se dejó vacío.')
+                return None
+
+        Producto.objects.create(
+            nombre=nombre,
+            categoria=fila.get('categoria') or '',
+            descripcion=fila.get('descripcion') or '',
+            cantidad_disponible=cantidad_disponible,
+            precio_referencia=_decimal_o_advertencia('precio_referencia'),
+            valor_estimado=_decimal_o_advertencia('valor_estimado'),
+            condiciones_venta=fila.get('condiciones_venta') or '',
+            referencia=referencia,
+            confidencial=_valor_booleano(fila.get('confidencial')),
+            proveedor_nombre=fila.get('proveedor_nombre') or '',
+            proveedor_contacto=fila.get('proveedor_contacto') or '',
+            proveedor_email=fila.get('proveedor_email') or '',
+            proveedor_telefono=fila.get('proveedor_telefono') or '',
         )
         creados += 1
 
@@ -437,11 +555,11 @@ def _procesar_importacion(archivo):
 # su estado cada pocos segundos (ver compradores_buscar_ia_estado) hasta
 # que queda "listo" o "error".
 
-def _ejecutar_busqueda_en_segundo_plano(busqueda_id, consulta):
+def _ejecutar_busqueda_en_segundo_plano(busqueda_id, consulta, funcion_busqueda=ia_busqueda.buscar_empresas):
     from django.db import connections
 
     try:
-        empresas, fuentes = ia_busqueda.buscar_empresas(consulta)
+        empresas, fuentes = funcion_busqueda(consulta)
     except ia_busqueda.BusquedaIAError as exc:
         BusquedaIA.objects.filter(pk=busqueda_id).update(
             estado=BusquedaIA.Estado.ERROR, error_mensaje=str(exc),
@@ -588,6 +706,316 @@ def compradores_buscar_ia_descartar(request):
     request.session.pop('ia_busqueda_id', None)
     request.session.pop('ia_consulta', None)
     return redirect('compradores_buscar_ia')
+
+
+# --- Proveedores / consignantes ---
+# El lado opuesto de Compradores: empresas que le dan inventario a ISYN para
+# vender/subastar (incluye chatarreos). Reutiliza el mismo patrón de listado,
+# ficha, formulario e historial, y la misma infraestructura de búsqueda con
+# IA en segundo plano — solo cambia el modelo y el prompt.
+
+ETAPA_INDICE_PROVEEDOR = {
+    Proveedor.Estado.POR_CONTACTAR: 0,
+    Proveedor.Estado.CONTACTADO: 1,
+    Proveedor.Estado.NEGOCIANDO: 2,
+    Proveedor.Estado.CONSIGNO: 3,
+}
+
+
+def _aplicar_filtros_proveedor(qs, params):
+    q = params.get('q', '').strip()
+    estado = params.get('estado', '')
+    pais = params.get('pais', '')
+    sector = params.get('sector', '')
+    fuente = params.get('fuente', '')
+
+    if q:
+        qs = qs.filter(
+            Q(nombre_empresa__icontains=q) | Q(pais__icontains=q) | Q(sector__icontains=q)
+        )
+    if estado:
+        qs = qs.filter(estado=estado)
+    if pais:
+        qs = qs.filter(pais=pais)
+    if sector:
+        qs = qs.filter(sector=sector)
+    if fuente:
+        qs = qs.filter(fuente=fuente)
+
+    filtros = {'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente}
+    return qs, filtros
+
+
+def _enriquecer_proveedor(proveedor):
+    asunto = 'Servicios de subasta y venta — ISYN'
+    cuerpo = (
+        f'Hola {proveedor.nombre_empresa},\n\nEn ISYN ayudamos a empresas como la suya a vender o '
+        'subastar activos e inventario. Nos gustaría conversar sobre cómo podemos ayudarles.\n\nQuedamos atentos.\n'
+    )
+    proveedor.mailto_url = f'mailto:{proveedor.email}?subject={quote(asunto)}&body={quote(cuerpo)}'
+    numero = proveedor.whatsapp_numero
+    proveedor.whatsapp_url = f'https://wa.me/{numero}?text={quote(cuerpo)}' if numero else ''
+    proveedor.es_internacional = bool(proveedor.pais) and proveedor.pais != 'Colombia'
+    proveedor.etapa_indice = ETAPA_INDICE_PROVEEDOR.get(proveedor.estado)
+    proveedor.es_descartado = proveedor.estado == Proveedor.Estado.DESCARTADO
+    return proveedor
+
+
+@login_required
+def proveedores_lista(request):
+    qs, filtros = _aplicar_filtros_proveedor(Proveedor.objects.all(), request.GET)
+
+    paginator = Paginator(qs, 20)
+    page_obj = paginator.get_page(request.GET.get('page'))
+    for proveedor in page_obj.object_list:
+        _enriquecer_proveedor(proveedor)
+
+    paises = Proveedor.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais')
+    sectores = Proveedor.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector')
+
+    querystring = request.GET.copy()
+    querystring.pop('page', None)
+
+    querystring_sin_estado = querystring.copy()
+    querystring_sin_estado.pop('estado', None)
+
+    todos = Proveedor.objects.all()
+    total = todos.count()
+    conteos = {
+        valor: todos.filter(estado=valor).count()
+        for valor, _ in Proveedor.Estado.choices
+    }
+    embudo = []
+    for valor, etiqueta in Proveedor.Estado.choices:
+        cantidad = conteos.get(valor, 0)
+        embudo.append({
+            'valor': valor,
+            'etiqueta': etiqueta,
+            'cantidad': cantidad,
+            'pct': round(cantidad / total * 100) if total else 0,
+            'activo': filtros['estado'] == valor,
+        })
+
+    context = {
+        'page_obj': page_obj,
+        'estados': Proveedor.Estado.choices,
+        'fuentes': Proveedor.Fuente.choices,
+        'paises': paises,
+        'sectores': sectores,
+        'filtros': filtros,
+        'querystring': querystring.urlencode(),
+        'querystring_sin_estado': querystring_sin_estado.urlencode(),
+        'total_proveedores': total,
+        'embudo': embudo,
+    }
+    return render(request, 'prospeccion/proveedores_lista.html', context)
+
+
+@login_required
+def proveedor_detalle(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    _enriquecer_proveedor(proveedor)
+
+    if request.method == 'POST':
+        form = HistorialContactoProveedorForm(request.POST)
+        if form.is_valid():
+            historial = form.save(commit=False)
+            historial.proveedor = proveedor
+            historial.usuario = request.user
+            historial.save()
+            proveedor.fecha_ultimo_contacto = timezone.now()
+            if proveedor.estado == Proveedor.Estado.POR_CONTACTAR:
+                proveedor.estado = Proveedor.Estado.CONTACTADO
+            proveedor.save()
+            messages.success(request, 'Contacto registrado en el historial.')
+            return redirect('proveedor_detalle', pk=proveedor.pk)
+    else:
+        form = HistorialContactoProveedorForm()
+
+    context = {
+        'proveedor': proveedor,
+        'historial': proveedor.historial.select_related('usuario'),
+        'form': form,
+    }
+    return render(request, 'prospeccion/proveedor_detalle.html', context)
+
+
+@login_required
+def proveedor_form(request, pk=None):
+    proveedor = get_object_or_404(Proveedor, pk=pk) if pk else None
+    if request.method == 'POST':
+        form = ProveedorForm(request.POST, instance=proveedor)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Proveedor guardado correctamente.')
+            return redirect('proveedores_lista')
+    else:
+        form = ProveedorForm(instance=proveedor)
+    return render(request, 'prospeccion/proveedor_form.html', {'form': form, 'proveedor': proveedor})
+
+
+@login_required
+@require_POST
+def proveedor_eliminar(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    proveedor.delete()
+    messages.success(request, 'Proveedor eliminado.')
+    return redirect('proveedores_lista')
+
+
+@login_required
+@require_POST
+def proveedor_marcar_contactado(request, pk):
+    proveedor = get_object_or_404(Proveedor, pk=pk)
+    proveedor.fecha_ultimo_contacto = timezone.now()
+    if proveedor.estado == Proveedor.Estado.POR_CONTACTAR:
+        proveedor.estado = Proveedor.Estado.CONTACTADO
+    proveedor.save()
+    HistorialContactoProveedor.objects.create(
+        proveedor=proveedor,
+        medio=request.POST.get('medio', HistorialContacto.Medio.OTRO),
+        resultado='Marcado como contactado desde el listado.',
+        usuario=request.user,
+    )
+    messages.success(request, f'{proveedor.nombre_empresa} marcado como contactado.')
+    next_url = request.POST.get('next') or reverse('proveedores_lista')
+    return redirect(next_url)
+
+
+@login_required
+def proveedores_buscar_ia(request):
+    form = BusquedaIAForm(initial={'consulta': request.session.get('ia_consulta_proveedor', '')})
+    busqueda = None
+    busqueda_id = request.session.get('ia_busqueda_proveedor_id')
+    if busqueda_id:
+        busqueda = BusquedaIA.objects.filter(
+            pk=busqueda_id, usuario=request.user, tipo=BusquedaIA.Tipo.PROVEEDOR,
+        ).first()
+
+    if busqueda and busqueda.estado == BusquedaIA.Estado.ERROR:
+        messages.error(request, busqueda.error_mensaje or 'La IA no respondió correctamente.')
+    elif busqueda and busqueda.estado == BusquedaIA.Estado.LISTO:
+        if not busqueda.resultados_json:
+            messages.warning(request, 'La IA no encontró empresas para esa búsqueda. Prueba con otros términos.')
+
+    context = {
+        'form': form,
+        'busqueda': busqueda,
+        'resultados': busqueda.resultados_json if busqueda and busqueda.estado == BusquedaIA.Estado.LISTO else None,
+        'fuentes': (busqueda.fuentes_json or []) if busqueda and busqueda.estado == BusquedaIA.Estado.LISTO else [],
+        'consulta_previa': request.session.get('ia_consulta_proveedor', ''),
+        'ia_configurada': bool(settings.GEMINI_API_KEY),
+    }
+    return render(request, 'prospeccion/proveedores_buscar_ia.html', context)
+
+
+@login_required
+@require_POST
+def proveedores_buscar_ia_ejecutar(request):
+    form = BusquedaIAForm(request.POST)
+    if not form.is_valid():
+        messages.error(request, 'Escribe qué quieres buscar.')
+        return redirect('proveedores_buscar_ia')
+
+    consulta = form.cleaned_data['consulta']
+
+    hoy = timezone.localdate()
+    busquedas_hoy = BusquedaIA.objects.filter(creado_en__date=hoy).count()
+    if busquedas_hoy >= settings.BUSQUEDA_IA_LIMITE_DIARIO:
+        messages.error(
+            request,
+            f'Ya se hicieron {busquedas_hoy} búsquedas con IA hoy '
+            f'(tope diario: {settings.BUSQUEDA_IA_LIMITE_DIARIO}). Intenta de nuevo mañana.',
+        )
+        return redirect('proveedores_buscar_ia')
+
+    busqueda = BusquedaIA.objects.create(
+        consulta=consulta, usuario=request.user, estado=BusquedaIA.Estado.PENDIENTE,
+        tipo=BusquedaIA.Tipo.PROVEEDOR,
+    )
+    threading.Thread(
+        target=_ejecutar_busqueda_en_segundo_plano,
+        args=(busqueda.pk, consulta, ia_busqueda.buscar_proveedores),
+        daemon=True,
+    ).start()
+
+    request.session['ia_busqueda_proveedor_id'] = busqueda.pk
+    request.session['ia_consulta_proveedor'] = consulta
+    return redirect('proveedores_buscar_ia')
+
+
+@login_required
+def proveedores_buscar_ia_estado(request, busqueda_id):
+    busqueda = get_object_or_404(BusquedaIA, pk=busqueda_id, usuario=request.user, tipo=BusquedaIA.Tipo.PROVEEDOR)
+    return JsonResponse({
+        'estado': busqueda.estado,
+        'total_resultados': busqueda.resultados if busqueda.estado == BusquedaIA.Estado.LISTO else None,
+    })
+
+
+@login_required
+@require_POST
+def proveedores_buscar_ia_guardar(request):
+    busqueda_id = request.session.get('ia_busqueda_proveedor_id')
+    busqueda = (
+        BusquedaIA.objects.filter(pk=busqueda_id, usuario=request.user, tipo=BusquedaIA.Tipo.PROVEEDOR).first()
+        if busqueda_id else None
+    )
+    resultados = (busqueda.resultados_json or []) if busqueda else []
+    seleccionados = request.POST.getlist('seleccion')
+
+    creados = 0
+    for indice in seleccionados:
+        try:
+            item = resultados[int(indice)]
+        except (ValueError, IndexError, TypeError):
+            continue
+
+        nombre_empresa = item.get('nombre_empresa')
+        if not nombre_empresa:
+            continue
+
+        existente = None
+        if item.get('email'):
+            existente = Proveedor.objects.filter(
+                nombre_empresa__iexact=nombre_empresa, email__iexact=item['email'],
+            ).first()
+        if existente:
+            continue
+
+        notas = 'Encontrado con búsqueda de IA — verificar antes de contactar.'
+        if item.get('resumen'):
+            notas += f"\n{item['resumen']}"
+
+        Proveedor.objects.create(
+            nombre_empresa=nombre_empresa,
+            pais=item.get('pais', ''),
+            ciudad=item.get('ciudad', ''),
+            sector=item.get('sector', ''),
+            email=item.get('email', ''),
+            telefono=item.get('telefono', ''),
+            sitio_web=item.get('sitio_web', ''),
+            linkedin_url=item.get('linkedin_url', ''),
+            facebook_url=item.get('facebook_url', ''),
+            instagram_url=item.get('instagram_url', ''),
+            fuente=Proveedor.Fuente.IA,
+            notas=notas,
+        )
+        creados += 1
+
+    request.session.pop('ia_busqueda_proveedor_id', None)
+    request.session.pop('ia_consulta_proveedor', None)
+
+    messages.success(request, f'Se guardaron {creados} proveedores nuevos.')
+    return redirect('proveedores_lista')
+
+
+@login_required
+@require_POST
+def proveedores_buscar_ia_descartar(request):
+    request.session.pop('ia_busqueda_proveedor_id', None)
+    request.session.pop('ia_consulta_proveedor', None)
+    return redirect('proveedores_buscar_ia')
 
 
 # --- Productos ---
