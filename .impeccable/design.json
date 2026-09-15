@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-08-31T12:00:00Z",
+  "generatedAt": "2026-09-15T16:41:33Z",
   "title": "Design System: ISYN",
   "extensions": {
     "colorMeta": {
@@ -14,8 +14,8 @@
       "side-accent": { "role": "primary", "displayName": "Terracota (acento del sidebar)", "canonical": "#b54a26", "tonalRamp": ["#341207", "#54200d", "#7a3015", "#8f3a1d", "#b54a26", "#cf6b46", "#e2937a", "#f5c9b6"] },
       "side-accent-deep": { "role": "primary", "displayName": "Terracota Profundo (hover del sidebar)", "canonical": "#8f3a1d", "tonalRamp": ["#2a0e06", "#43170a", "#6b2812", "#8f3a1d", "#ad4c28", "#c96d47", "#e0937a", "#f2c4b1"] },
       "side-accent-soft": { "role": "primary", "displayName": "Terracota Suave (hover de enlaces)", "canonical": "#f0d7bd", "tonalRamp": ["#5c3a22", "#7c5333", "#9c6f48", "#bb8d63", "#d6ae87", "#e8c5a4", "#f0d7bd", "#faf0e6"] },
-      "ink-900": { "role": "neutral", "displayName": "Ink 900 (login)", "canonical": "#1a1a1a", "tonalRamp": ["#0d0d0d", "#1a1a1a", "#262626", "#404040", "#595959", "#737373", "#a3a3a3", "#d4d4d4"] },
-      "canvas": { "role": "neutral", "displayName": "Lienzo", "canonical": "#fafafa", "tonalRamp": ["#e5e5e5", "#ececec", "#f2f2f2", "#f5f5f5", "#fafafa", "#fbfbfb", "#fdfdfd", "#ffffff"] },
+      "ink-900": { "role": "neutral", "displayName": "Ink 900 (login)", "canonical": "#0f172a", "tonalRamp": ["#020617", "#0f172a", "#1e293b", "#334155", "#475569", "#64748b", "#94a3b8", "#cbd5e1"] },
+      "canvas": { "role": "neutral", "displayName": "Lienzo", "canonical": "#f8fafc", "tonalRamp": ["#e2e8f0", "#eef2f7", "#f1f5f9", "#f4f7fa", "#f8fafc", "#f9fbfd", "#fcfdfe", "#ffffff"] },
       "danger": { "role": "neutral", "displayName": "Rojo destructivo (solo eliminar)", "canonical": "#ef4444", "tonalRamp": ["#7f1d1d", "#991b1b", "#b91c1c", "#dc2626", "#ef4444", "#f87171", "#fca5a5", "#fee2e2"] }
     },
     "typographyMeta": {
@@ -49,7 +49,7 @@
       "refersTo": "icon-button-mail-hover",
       "description": "Acción rápida de correo en la fila de un comprador. Fantasma por defecto, se tiñe de Azul ISYN (progreso) solo en hover.",
       "html": "<button class=\"ds-icon-btn ds-icon-btn-mail\" aria-label=\"Enviar correo\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"2.5\" y=\"4.5\" width=\"15\" height=\"11\" rx=\"1.5\"/><path d=\"M3.2 5.5 10 11l6.8-5.5\"/></svg></button>",
-      "css": ".ds-icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e5e5e5; background: #fff; color: #737373; transition: background .12s ease, color .12s ease, border-color .12s ease; } .ds-icon-btn-mail:hover, .ds-icon-btn-mail:focus-visible { background: #eff6fb; color: #014b72; border-color: #b8d6ec; }"
+      "css": ".ds-icon-btn { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; transition: background .12s ease, color .12s ease, border-color .12s ease; } .ds-icon-btn-mail:hover, .ds-icon-btn-mail:focus-visible { background: #eff6fb; color: #014b72; border-color: #b8d6ec; }"
     },
     {
       "name": "Icon Button — WhatsApp",
@@ -57,7 +57,7 @@
       "refersTo": "icon-button-chat-hover",
       "description": "Acción rápida de WhatsApp. Se tiñe de esmeralda (canal más cercano a un cierre ganado) solo en hover — nunca por defecto.",
       "html": "<button class=\"ds-icon-btn ds-icon-btn-chat\" aria-label=\"Contactar por WhatsApp\"><svg width=\"18\" height=\"18\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 9.8c0-3.7 3.1-6.6 7-6.6s7 3 7 6.6-3.1 6.6-7 6.6c-1 0-2-.2-2.9-.6L3.5 17l1-3.4A6.3 6.3 0 0 1 3 9.8Z\"/></svg></button>",
-      "css": ".ds-icon-btn-chat { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e5e5e5; background: #fff; color: #737373; transition: background .12s ease, color .12s ease, border-color .12s ease; } .ds-icon-btn-chat:hover, .ds-icon-btn-chat:focus-visible { background: #d1fae5; color: #065f46; border-color: #10b981; }"
+      "css": ".ds-icon-btn-chat { width: 32px; height: 32px; display: inline-flex; align-items: center; justify-content: center; border-radius: 10px; border: 1px solid #e2e8f0; background: #fff; color: #64748b; transition: background .12s ease, color .12s ease, border-color .12s ease; } .ds-icon-btn-chat:hover, .ds-icon-btn-chat:focus-visible { background: #d1fae5; color: #065f46; border-color: #10b981; }"
     },
     {
       "name": "Stage Meter",
@@ -65,7 +65,7 @@
       "refersTo": "stage-meter",
       "description": "Componente de firma del sistema. Reemplaza el semáforo de estados: una barra de una sola tonalidad que se llena proporcional al avance del prospecto, más el texto siempre visible. El esmeralda solo aparece al 100% (Cliente).",
       "html": "<span class=\"ds-stage\"><span class=\"ds-stage-track\"><span class=\"ds-stage-fill\" style=\"width:75%\"></span></span><span class=\"ds-stage-label\">Interesado</span></span>",
-      "css": ".ds-stage { display: inline-flex; align-items: center; gap: .55rem; } .ds-stage-track { width: 44px; height: 6px; border-radius: 999px; background: #f2f2f2; overflow: hidden; } .ds-stage-fill { height: 100%; border-radius: 999px; background: #046cb3; } .ds-stage-label { font-size: .78rem; font-weight: 650; color: #404040; }"
+      "css": ".ds-stage { display: inline-flex; align-items: center; gap: .55rem; } .ds-stage-track { width: 44px; height: 6px; border-radius: 999px; background: #f1f5f9; overflow: hidden; } .ds-stage-fill { height: 100%; border-radius: 999px; background: #046cb3; } .ds-stage-label { font-size: .78rem; font-weight: 650; color: #334155; }"
     },
     {
       "name": "Tag — Neutral",
@@ -73,7 +73,7 @@
       "refersTo": "tag-neutral",
       "description": "Categoría descriptiva (sector, categoría de producto). Fondo plano, completamente redondeado, sin borde.",
       "html": "<span class=\"ds-tag\">Electrónica de consumo</span>",
-      "css": ".ds-tag { display: inline-flex; align-items: center; padding: .28rem .65rem; border-radius: 999px; font-size: .74rem; font-weight: 650; background: #f2f2f2; color: #737373; }"
+      "css": ".ds-tag { display: inline-flex; align-items: center; padding: .28rem .65rem; border-radius: 999px; font-size: .74rem; font-weight: 650; background: #f1f5f9; color: #64748b; }"
     },
     {
       "name": "Text Input",
@@ -81,7 +81,7 @@
       "refersTo": "input-text",
       "description": "Campo de texto estándar, usado en formularios y en el buscador (con ícono incrustado).",
       "html": "<div class=\"ds-search-field\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 20 20\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.6\" stroke-linecap=\"round\" stroke-linejoin=\"round\" class=\"ds-search-icon\"><circle cx=\"8.5\" cy=\"8.5\" r=\"5.5\"/><path d=\"M16.5 16.5 13 13\"/></svg><input class=\"ds-input\" type=\"text\" placeholder=\"Empresa, país o sector\"></div>",
-      "css": ".ds-search-field { position: relative; } .ds-search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: #a3a3a3; } .ds-input { width: 100%; border: 1px solid #e5e5e5; border-radius: 10px; padding: .5rem .75rem .5rem 2.15rem; font-size: .875rem; background: #fff; color: #262626; } .ds-input:focus { outline: none; border-color: #6ba9d6; box-shadow: 0 0 0 3px #eff6fb; }"
+      "css": ".ds-search-field { position: relative; } .ds-search-icon { position: absolute; left: .75rem; top: 50%; transform: translateY(-50%); color: #94a3b8; } .ds-input { width: 100%; border: 1px solid #e2e8f0; border-radius: 10px; padding: .5rem .75rem .5rem 2.15rem; font-size: .875rem; background: #fff; color: #1e293b; } .ds-input:focus { outline: none; border-color: #6ba9d6; box-shadow: 0 0 0 3px #eff6fb; }"
     },
     {
       "name": "Sidebar Nav Link",

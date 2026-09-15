@@ -17,14 +17,14 @@ colors:
   side-accent: "#b54a26"
   side-accent-deep: "#8f3a1d"
   side-accent-soft: "#f0d7bd"
-  ink-900: "#1a1a1a"
-  text-primary: "#262626"
-  text-secondary: "#595959"
-  text-muted: "#737373"
-  text-faint: "#a3a3a3"
-  border: "#e5e5e5"
-  surface-sunken: "#f2f2f2"
-  canvas: "#fafafa"
+  ink-900: "#0f172a"
+  text-primary: "#1e293b"
+  text-secondary: "#475569"
+  text-muted: "#64748b"
+  text-faint: "#94a3b8"
+  border: "#e2e8f0"
+  surface-sunken: "#f1f5f9"
+  canvas: "#f8fafc"
   surface: "#ffffff"
   danger: "#ef4444"
   danger-soft: "#fee2e2"
@@ -146,9 +146,11 @@ Confirmado explícitamente por el usuario: el carácter del **área de trabajo**
 
 **Rebrand confirmado:** el cliente real de este proyecto es **ISYN (Internacional de Subastas y Negocios)**, una empresa panameña de subastas, licitaciones y negocios internacionales (isynsubastas.com). El producto llevaba antes el nombre provisional "CenterComp"; ese nombre queda retirado de toda superficie visible. El sistema de diseño construido bajo ese nombre (medidor de etapa, fila de contacto, regla de la sombra única, etc.) se conservó íntegro — solo se re-coloreó con la paleta real de ISYN, extraída por muestreo directo del archivo de logo entregado por el cliente.
 
+**Paleta neutra actualizada (confirmado):** se pidió un look "SaaS corporativo premium" — la escala neutra pasó de un gris plano (tomado del gris exacto del logo) a una escala "slate" (gris con matiz azulado, ej. `#f8fafc`/`#0f172a`), con fondos y bordes más sutiles y texto nunca en negro puro. El acento de marca (Azul ISYN, `--brand-600`) se dejó intacto a propósito — es el color real del logo del cliente, no una plantilla genérica; solo se modernizó el fondo, los bordes y el texto.
+
 **Key Characteristics:**
 - Un solo acento de color (Azul ISYN) para toda acción/progreso en el área de trabajo; el esmeralda es una excepción con significado, no un color más. El sidebar vive aparte, en su propio mundo cálido (terracota) — ver Regla del Rincón Cálido
-- Escala neutra tomada del gris real del logo de ISYN, que hace la mayor parte del trabajo visual
+- Escala neutra tipo "slate" (gris con matiz azulado, ver Paleta neutra actualizada), que hace la mayor parte del trabajo visual
 - Iconografía dibujada en trazo consistente, nunca emoji
 - Densidad alta a propósito — la tabla es el producto, no un elemento decorativo alrededor de ella
 - Tipografía única (Inter) en todo el sistema; sin par display/body
@@ -176,14 +178,14 @@ Paleta propia, aparte de la marca ISYN, usada exclusivamente dentro del sidebar.
 - **Borde cálido** (`#e7d7b8`): línea divisoria bajo el logo y sobre el pie del sidebar.
 
 ### Neutral
-- **Ink 900** (`#1a1a1a`): fondo del login (`.auth-shell`), texto de mayor peso en el área de trabajo.
-- **Texto Primario** (`#262626`): color de texto base del cuerpo.
-- **Texto Secundario** (`#595959`): el gris exacto del logo de ISYN. Enlaces del embudo, botones secundarios.
-- **Texto Apagado** (`#737373`): metadatos, subtítulos, columnas de contexto (país, fuente).
-- **Texto Tenue** (`#a3a3a3`): el estado "Descartado" (sale de la escala de progreso, se apaga), marcadores internacionales.
-- **Borde** (`#e5e5e5`): bordes de tarjetas, tabla, campos.
-- **Superficie Hundida** (`#f2f2f2`): encabezado de tabla, fila en hover, fondo de tags neutros.
-- **Lienzo** (`#fafafa`): fondo de página.
+- **Ink 900** (`#0f172a`): fondo del login (`.auth-shell`), texto de mayor peso en el área de trabajo.
+- **Texto Primario** (`#1e293b`): color de texto base del cuerpo.
+- **Texto Secundario** (`#475569`): slate medio. Enlaces del embudo, botones secundarios.
+- **Texto Apagado** (`#64748b`): metadatos, subtítulos, columnas de contexto (país, fuente).
+- **Texto Tenue** (`#94a3b8`): el estado "Descartado" (sale de la escala de progreso, se apaga), marcadores internacionales.
+- **Borde** (`#e2e8f0`): bordes de tarjetas, tabla, campos.
+- **Superficie Hundida** (`#f1f5f9`): encabezado de tabla, fila en hover, fondo de tags neutros.
+- **Lienzo** (`#f8fafc`): fondo de página.
 - **Superficie** (`#ffffff`): tarjetas, tabla, campos.
 
 ### Named Rules
@@ -273,16 +275,16 @@ En el detalle del comprador, cada canal de contacto (correo, teléfono/WhatsApp,
 Barra de 44×6px, completamente redondeada, que se llena en Azul ISYN proporcional a la etapa del prospecto (25% / 50% / 75% / 100%), más la etiqueta de texto siempre visible al lado — el color nunca es la única fuente de información. Al llegar a "Cliente" (100%), el relleno cambia a Esmeralda Ganada. "Descartado" no usa el medidor: se muestra con una marca de "×" en Texto Tenue, fuera de la escala de progreso. El mismo componente se repite a escala agregada como el **Embudo** al inicio del listado de compradores — una barra segmentada por todo el pipeline, donde cada segmento es clicable y filtra la tabla a esa etapa.
 
 ### Tags / Pills
-- **Style:** completamente redondeados, sin borde, fondo de tinte plano. `tag-neutral` (fondo `#f2f2f2`, texto `#737373`) para categorías descriptivas (sector, categoría de producto). Los tags de canal (tipo de plantilla) heredan los mismos colores que los Icon Buttons — azul para correo, esmeralda para WhatsApp — para que el mismo canal se reconozca igual en cualquier pantalla.
+- **Style:** completamente redondeados, sin borde, fondo de tinte plano. `tag-neutral` (fondo `#f1f5f9`, texto `#64748b`) para categorías descriptivas (sector, categoría de producto). Los tags de canal (tipo de plantilla) heredan los mismos colores que los Icon Buttons — azul para correo, esmeralda para WhatsApp — para que el mismo canal se reconozca igual en cualquier pantalla.
 
 ### Cards / Containers (`.panel`, `.table-panel`)
 - **Corner Style:** `14px`.
-- **Background:** blanco sobre lienzo `#fafafa`.
+- **Background:** blanco sobre lienzo `#f8fafc`.
 - **Shadow Strategy:** la sombra única descrita en Elevation & Depth.
-- **Border:** `1px solid #e5e5e5`.
+- **Border:** `1px solid #e2e8f0`.
 
 ### Inputs / Fields
-- **Style:** fondo blanco, borde `#e5e5e5`, radio `10px`, padding `0.5rem 0.75rem`.
+- **Style:** fondo blanco, borde `#e2e8f0`, radio `10px`, padding `0.5rem 0.75rem`.
 - **Focus:** borde Azul ISYN claro (`#6ba9d6`) más halo de `0 0 0 3px` en Azul ISYN Faint (`#eff6fb`).
 - **Search fields:** ícono de lupa incrustado a la izquierda (`.search-field`), nunca un campo de búsqueda sin señal visual de qué hace.
 
@@ -290,7 +292,7 @@ Barra de 44×6px, completamente redondeada, que se llena en Azul ISYN proporcion
 Sidebar fijo de 240px, en el mundo cálido descrito en la Regla del Rincón Cálido: fondo en degradado vertical muy sutil de arena a lino (`#faf3e6` → `#f1e2c8`), sin grano ni resplandor — la calidez viene del color plano, no de textura, para que se lea minimalista. El logo real de ISYN (`static/img/isyn-logo.png`, ya con fondo transparente) flota directo sobre el degradado cálido, sin placa ni tarjeta propia — el archivo anterior tenía fondo blanco opaco y necesitaba una superficie propia para no verse como una caja rota; la versión actual ya no la necesita. Los enlaces de navegación usan tinta cálida (`#35281b`) por defecto; en hover ganan un fondo terracota suave (`#f0d7bd`); el enlace activo gana relleno terracota sólido (`#b54a26`) con texto blanco y peso 600 — mismo patrón de "activo = relleno sólido" que el resto del sistema, solo que en el acento propio del sidebar. En móvil, colapsa detrás de un botón de menú fijo y un fondo oscuro neutro que cierra al tocar fuera (ese scrim no es parte de la identidad del sidebar, así que se queda neutro). En escritorio existe un segundo control, independiente del menú móvil: un botón `.chrome-btn` en la topbar (ícono de panel lateral) que oculta el sidebar por completo — se retira del flujo (`width: 0`), el contenido ocupa el ancho libre, y el mismo botón lo trae de vuelta. Ese estado también se guarda en `localStorage` y se aplica antes del primer render, igual que el tema.
 
 ### Pantalla de login
-Único lugar fuera del shell de la app. Fondo oscuro (`#1a1a1a`) con dos degradados radiales muy tenues (Azul ISYN al 18% y Marino ISYN al 20%) — el mismo par de colores de la marca, nunca un tercer acento nuevo. Una sola tarjeta centrada (`.auth-card`) con el logo real de ISYN arriba (sin placa, porque la tarjeta ya es blanca) y la sombra dramática descrita en Elevation & Depth.
+Único lugar fuera del shell de la app. Fondo oscuro (`#0f172a`) con dos degradados radiales muy tenues (Azul ISYN al 18% y Marino ISYN al 20%) — el mismo par de colores de la marca, nunca un tercer acento nuevo. Una sola tarjeta centrada (`.auth-card`) con el logo real de ISYN arriba (sin placa, porque la tarjeta ya es blanca) y la sombra dramática descrita en Elevation & Depth.
 
 ### Named Rules
 **La Regla del Resplandor de Marca.** La pantalla de login es ahora la única superficie oscura del producto (el sidebar pasó al mundo cálido de la Regla del Rincón Cálido y ya no aplica esta regla). Lleva un resplandor de dos degradados radiales muy tenues en el par Azul/Marino ISYN, nunca un color nuevo — es el primer momento de marca de la sesión, antes de que el usuario entre al sidebar cálido o al área de trabajo azul. Una superficie oscura nunca es un relleno plano sin ese resplandor.

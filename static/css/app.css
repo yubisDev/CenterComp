@@ -13,16 +13,19 @@
   --brand-600: #046cb3;
   --brand-700: #014b72;
 
-  --ink-900: #1a1a1a;
-  --ink-800: #262626;
-  --ink-700: #404040;
-  --ink-600: #595959;
-  --ink-500: #737373;
-  --ink-400: #a3a3a3;
-  --ink-300: #d4d4d4;
-  --ink-200: #e5e5e5;
-  --ink-100: #f2f2f2;
-  --ink-50:  #fafafa;
+  /* Escala "slate" (gris con matiz azulado) — reemplaza la escala neutra
+     plana anterior para un look SaaS premium; el acento sigue siendo el
+     Azul ISYN real del logo, sin tocar. */
+  --ink-900: #0f172a;
+  --ink-800: #1e293b;
+  --ink-700: #334155;
+  --ink-600: #475569;
+  --ink-500: #64748b;
+  --ink-400: #94a3b8;
+  --ink-300: #cbd5e1;
+  --ink-200: #e2e8f0;
+  --ink-100: #f1f5f9;
+  --ink-50:  #f8fafc;
 
   --ok-500: #10b981;
   --ok-100: #d1fae5;
@@ -59,7 +62,7 @@
   --sidebar-w: 240px;
   --radius: 14px;
   --radius-sm: 10px;
-  --shadow-card: 0 1px 2px rgba(26, 26, 26, .04), 0 8px 24px -12px rgba(26, 26, 26, .12);
+  --shadow-card: 0 1px 2px rgba(15, 23, 42, .04), 0 8px 24px -12px rgba(15, 23, 42, .12);
 }
 
 /* ---------- Tema oscuro ----------
@@ -68,17 +71,18 @@
    el "primer momento de marca" fijo descrito en DESIGN.md. */
 
 :root[data-theme="dark"] {
-  --bg-canvas: #16181b;
-  --bg-surface: #1e2124;
-  --bg-surface-sunken: #24272b;
-  --text-heading: #f2f0ed;
-  --text-primary: #d9d5cf;
-  --text-secondary: #a8a29a;
-  --text-muted: #8a8479;
-  --text-faint: #6b665d;
-  --border-soft: #2b2e32;
-  --border-default: #34383d;
-  --border-strong: #454a50;
+  /* Antracita slate — mismo matiz azulado que la escala clara, no negro puro. */
+  --bg-canvas: #0f172a;
+  --bg-surface: #1e293b;
+  --bg-surface-sunken: #263449;
+  --text-heading: #f1f5f9;
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --text-muted: #64748b;
+  --text-faint: #475569;
+  --border-soft: #263449;
+  --border-default: #334155;
+  --border-strong: #475569;
 
   --brand-50: #16232c;
   --brand-100: #17324a;
@@ -649,7 +653,7 @@ table.table-modern.table-sm tbody td { padding: .42rem .75rem; }
   max-width: 380px;
   background: #fff;
   border-radius: var(--radius);
-  box-shadow: 0 20px 60px -20px rgba(26,26,26,.45);
+  box-shadow: 0 20px 60px -20px rgba(15,23,42,.45);
   padding: 2rem 1.9rem;
 }
 
@@ -779,7 +783,7 @@ table.table-modern.table-sm tbody td { padding: .42rem .75rem; }
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(26, 26, 26, .5);
+  background: rgba(15, 23, 42, .5);
   z-index: 39;
   opacity: 0;
   transition: opacity .15s ease;
