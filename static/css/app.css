@@ -161,7 +161,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-heading); font-weight: 650; letter-sp
 
 .sidebar-brand .mark {
   width: 100%;
-  max-width: 176px;
+  max-width: 112px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -188,7 +188,7 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-heading); font-weight: 650; letter-sp
 }
 
 .sidebar-nav a:hover { background: var(--side-accent-soft); color: var(--side-accent-deep); }
-.sidebar-nav a.active { background: var(--side-accent); color: #fff; font-weight: 600; }
+.sidebar-nav a.active { background: var(--side-accent-soft); color: var(--side-accent-deep); font-weight: 650; }
 .sidebar-nav .icon { width: 18px; display: inline-flex; align-items: center; justify-content: center; opacity: .9; }
 .sidebar-nav .icon svg { display: block; }
 
@@ -306,6 +306,14 @@ h1, h2, h3, h4, h5, h6 { color: var(--text-heading); font-weight: 650; letter-sp
 
 .form-control::placeholder { color: var(--text-faint); }
 
+/* Nuestra regla .form-control de arriba pisaría el padding reducido de
+   Bootstrap si no se redeclara aquí — misma razón por la que .btn-sm
+   también se redefine aparte más abajo. */
+.form-control-sm, .form-select-sm {
+  padding: .32rem .6rem;
+  font-size: .82rem;
+}
+
 label.form-label { font-weight: 600; font-size: .82rem; color: var(--text-primary); }
 
 /* ---------- Buttons ---------- */
@@ -364,6 +372,37 @@ table.table-modern tbody tr:last-child td { border-bottom: none; }
 table.table-modern tbody tr:hover { background: var(--bg-surface-sunken); }
 table.table-modern a.row-link { color: var(--text-heading); font-weight: 600; }
 table.table-modern a.row-link:hover { color: var(--brand-600); }
+
+/* .table-sm de Bootstrap por sí sola no alcanza a achicar el padding —
+   nuestras reglas de arriba (más específicas por el .table-modern) lo
+   pisan, así que el recorte real de tamaño va aquí. */
+table.table-modern.table-sm thead th { padding: .55rem .75rem; }
+table.table-modern.table-sm tbody td { padding: .42rem .75rem; }
+
+/* ---------- Badges de estado (comprador/proveedor) ----------
+   Mismo criterio de color que el resto de la app: una sola rampa (brand)
+   que se profundiza con el avance del pipeline, y dos excepciones con
+   significado propio — esmeralda para "ganado", gris apagado para
+   "descartado". No es un semáforo rojo/ámbar/verde. */
+
+.badge-estado {
+  display: inline-flex;
+  align-items: center;
+  padding: .3rem .65rem;
+  border-radius: 999px;
+  font-size: .74rem;
+  font-weight: 650;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.badge-por_contactar { background: var(--bg-surface-sunken); color: var(--text-secondary); }
+.badge-contactado    { background: var(--brand-100); color: var(--brand-700); }
+.badge-interesado    { background: var(--brand-200); color: var(--brand-700); }
+.badge-negociando    { background: var(--brand-200); color: var(--brand-700); }
+.badge-cliente       { background: var(--ok-100); color: var(--ok-deep); }
+.badge-consigno      { background: var(--ok-100); color: var(--ok-deep); }
+.badge-descartado    { background: var(--bg-surface-sunken); color: var(--text-faint); }
 
 /* ---------- Tags (category labels — sector, tipo de plantilla) ---------- */
 
@@ -635,6 +674,23 @@ table.table-modern a.row-link:hover { color: var(--brand-600); }
   letter-spacing: -.01em;
   font-variant-numeric: tabular-nums;
 }
+
+/* ---------- Tarjetas KPI clicables (embudo de estados como grilla) ---------- */
+
+.metric-card-link {
+  display: block;
+  text-decoration: none;
+  transition: border-color .12s ease, box-shadow .12s ease;
+}
+
+.metric-card-link:hover { border-color: var(--brand-400); }
+
+.metric-card-link.is-active {
+  border-color: var(--brand-600);
+  box-shadow: 0 0 0 1px var(--brand-600), var(--shadow-card);
+}
+
+.metric-card-link.is-active .metric-value { color: var(--brand-600); }
 
 .bar-list { display: flex; flex-direction: column; gap: .85rem; }
 
