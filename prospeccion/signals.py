@@ -14,6 +14,7 @@ Reglas duras de este módulo:
 import logging
 import threading
 
+from django.conf import settings
 from django.core.mail import EmailMessage, get_connection
 from django.db import connections, transaction
 from django.db.models.signals import post_save
@@ -39,6 +40,10 @@ def _buscar_compradores_interesados(producto):
 
 def _procesar_match_en_segundo_plano(producto_id):
     try:
+        if not settings.EMAIL_DELIVERY_CONFIGURED:
+            logger.info('Se omiten alertas por correo del producto %s: SMTP no está configurado.', producto_id)
+            return
+
         try:
             producto = Producto.objects.get(pk=producto_id)
         except Producto.DoesNotExist:

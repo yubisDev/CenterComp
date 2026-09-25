@@ -10,7 +10,7 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage, get_connection
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
-from django.http import JsonResponse
+from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
@@ -266,6 +266,13 @@ ENVIO_MASIVO_LIMITE = 300
 @login_required
 def compradores_envio_masivo(request):
     qs, filtros = _aplicar_filtros_comprador(Comprador.objects.all(), request.GET)
+    producto_id = request.GET.get('producto', '').strip()
+    producto_interes = None
+    if producto_id:
+        if not producto_id.isdecimal():
+            raise Http404('Producto no válido.')
+        producto_interes = get_object_or_404(Producto, pk=producto_id)
+        qs = qs.filter(productos_interes=producto_interes)
     qs = qs.exclude(email='').order_by('nombre_empresa').prefetch_related('productos_interes')
     total_filtrados = qs.count()
     destinatarios = list(qs[:ENVIO_MASIVO_LIMITE])
@@ -277,7 +284,7 @@ def compradores_envio_masivo(request):
     plantilla_email_generica = plantilla or PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
     plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
     for comprador in destinatarios:
-        producto = comprador.productos_interes.first()
+        producto = producto_interes or comprador.productos_interes.first()
         producto_nombre = producto.nombre if producto else ''
         if plantilla:
             asunto, _ = plantilla.render(comprador, producto_nombre)
@@ -300,6 +307,12 @@ def compradores_envio_masivo(request):
         'filtros': filtros,
         'plantillas': PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL),
         'plantilla_id': plantilla_id,
+        'producto_id': producto_id,
+        'producto_interes': producto_interes,
+        'productos': Producto.objects.filter(
+            compradores_interesados__isnull=False,
+        ).distinct().order_by('nombre'),
+        'correo_saliente_configurado': settings.EMAIL_DELIVERY_CONFIGURED,
         'querystring': request.GET.urlencode(),
     }
     return render(request, 'prospeccion/compradores_envio_masivo.html', context)
@@ -308,11 +321,24 @@ def compradores_envio_masivo(request):
 @login_required
 @require_POST
 def compradores_envio_masivo_enviar(request):
+    if not settings.EMAIL_DELIVERY_CONFIGURED:
+        messages.error(
+            request,
+            'El correo saliente no está configurado. Configura la cuenta SMTP corporativa antes de enviar.',
+        )
+        return redirect('compradores_envio_masivo')
+
     plantilla = get_object_or_404(
         PlantillaMensaje, pk=request.POST.get('plantilla_id'), tipo=PlantillaMensaje.Tipo.EMAIL,
     )
     pks = request.POST.getlist('compradores')
+    producto_id = request.POST.get('producto_id', '').strip()
+    if producto_id and not producto_id.isdecimal():
+        raise Http404('Producto no válido.')
+    producto_interes = get_object_or_404(Producto, pk=producto_id) if producto_id else None
     compradores = Comprador.objects.filter(pk__in=pks).exclude(email='').prefetch_related('productos_interes')
+    if producto_interes:
+        compradores = compradores.filter(productos_interes=producto_interes)
 
     enviados = 0
     errores = 0
@@ -320,7 +346,7 @@ def compradores_envio_masivo_enviar(request):
     connection.open()
     try:
         for comprador in compradores:
-            producto = comprador.productos_interes.first()
+            producto = producto_interes or comprador.productos_interes.first()
             asunto, cuerpo = plantilla.render(comprador, producto.nombre if producto else '')
             try:
                 EmailMessage(
@@ -367,7 +393,11 @@ def compradores_importar(request):
                 messages.success(request, f"Se importaron {resumen['creados']} compradores nuevos.")
     else:
         form = ImportarCompradoresForm()
-    return render(request, 'prospeccion/compradores_importar.html', {'form': form, 'resumen': resumen})
+    return render(request, 'prospeccion/compradores_importar.html', {
+        'form': form,
+        'resumen': resumen,
+        'correo_saliente_configurado': settings.EMAIL_DELIVERY_CONFIGURED,
+    })
 
 
 IMPORTACION_TAMANO_MAXIMO = 10 * 1024 * 1024  # 10 MB

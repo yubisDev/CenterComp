@@ -26,13 +26,19 @@ The edge over a spreadsheet or a generic CRM (e.g. HubSpot) is the tight, single
 - Pipeline states per buyer: por contactar → contactado → interesado / descartado / cliente.
 - Message templates support `{nombre_empresa}` and `{producto}` variables for email and WhatsApp.
 - Every buyer has a contact-history log (bitácora): date, channel, outcome.
-- Quick-contact actions open the user's own mail client (`mailto:`) or WhatsApp (`wa.me`) pre-filled — sending is always a manual, deliberate action by the user, never automated.
+- Single-contact actions open the user's own mail client (`mailto:`) or WhatsApp (`wa.me`) pre-filled.
+- The operator can deliberately send a templated email to a selected group of buyers, including prospects and buyers marked as interested. The bulk-email screen filters by status, country, sector, text search, and product of interest, and shows up to 300 recipients with email addresses before confirmation.
+- When a new product is created, the app automatically emails buyers whose saved interest keywords match that product, if email delivery and a template are configured. This is a separate inventory-match notification, not a bulk campaign.
+- Every outbound email is logged in the buyer's contact history. Bulk sends are started and confirmed by the operator; keyword-match notifications are triggered by creating a matching product.
 - Deploy target: Railway. SQLite locally, PostgreSQL in production via `DATABASE_URL`.
 
 ## Capabilities and Constraints
 
 - Django + server-rendered Django templates + Bootstrap. No SPA/React.
-- No automated mass email sending, ever — by explicit product decision.
+- Bulk email to a reviewed, operator-selected group is an intended capability for both potential buyers and interested buyers. The operator chooses recipients and confirms before the bulk campaign is sent.
+- Real bulk email and inventory-match notifications require the company's SMTP host and credentials. Without them, the bulk-send action is blocked and automatic notifications are skipped; the console email backend is never reported as a real delivery.
+- Inventory-match email notifications are currently automatic when a newly created product matches a buyer's saved keywords and email template/delivery are configured.
+- When filtering by a specific product, bulk email targets only buyers linked to that product as interested, and uses that product name when rendering the `{producto}` template variable.
 - No automated scraping of social networks or websites — explicit exclusion, to avoid legal risk.
 - One paid external API is now wired up: Gemini (Google) with Google Search grounding, used for the "Buscar con IA" feature (search real companies by category/sector, review as drafts, approve into the CRM). Costs real money — the user explicitly funded a small prepaid balance for this after confirming they understood the billing model. A hard daily cap (`BUSQUEDA_IA_LIMITE_DIARIO`, default 20 searches/day) exists specifically to prevent runaway cost. A Hunter.io integration endpoint also exists as a stub for a possible future paid integration, but nothing is wired up there.
 - Auth exists (Django's built-in), scoped to a single active user today; the `Comprador.responsable` field anticipates more users later without any multi-user UI built yet.
@@ -49,7 +55,7 @@ No real buyer/contact data exists yet. The buyer records currently in the databa
 ## Product Principles
 
 1. Every screen should shorten the path from "found a buyer" to "sent them a message" — that loop is the product's whole reason to exist.
-2. Never automate outbound sending or scraping. The user stays the one who decides what leaves the building.
+2. The operator controls bulk campaigns by selecting recipients and confirming the send. Product-match notifications may be sent automatically when a newly created product matches a buyer's saved interests. Never automate scraping.
 3. Design for one operator first. Don't build in multi-user role/permission complexity until a second real user shows up.
 4. Default to zero paid dependencies unless the user explicitly and knowingly funds one. The Gemini AI search is the one confirmed exception, and it ships with a hard daily cap for exactly this reason.
 5. Treat all current buyer records as disposable demo content — never as evidence of real customers or a claim about traction.

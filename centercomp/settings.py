@@ -145,19 +145,19 @@ LOGOUT_REDIRECT_URL = 'login'
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 BUSQUEDA_IA_LIMITE_DIARIO = int(os.environ.get('BUSQUEDA_IA_LIMITE_DIARIO', '20'))
 
-# Envío masivo de correo. Sin EMAIL_HOST configurado, los mensajes se
-# imprimen en la consola del servidor (no se envía nada real) — útil para
-# probar el módulo antes de tener credenciales SMTP reales.
-if os.environ.get('EMAIL_HOST'):
-    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-else:
-    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+# Correo saliente. Solo se considera configurado cuando hay host y
+# credenciales SMTP; el backend de consola no cuenta como un envío real.
 EMAIL_HOST = os.environ.get('EMAIL_HOST', '')
 EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))
 EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
 EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
 EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
 DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', 'no-responder@isyn.com')
+EMAIL_DELIVERY_CONFIGURED = bool(EMAIL_HOST and EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+if EMAIL_DELIVERY_CONFIGURED:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 # Seguridad de producción — se activa solo cuando DEBUG está apagado para no
 # romper el desarrollo local en http://localhost.

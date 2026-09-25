@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Comprador, HistorialContacto, PlantillaMensaje, Producto
@@ -108,6 +108,10 @@ class EnvioMasivoTests(TestCase):
         self.assertContains(respuesta, 'Con Correo SAS')
         self.assertNotContains(respuesta, 'Sin Correo SAS')
 
+    @override_settings(
+        EMAIL_DELIVERY_CONFIGURED=True,
+        EMAIL_BACKEND='django.core.mail.backends.locmem.EmailBackend',
+    )
     def test_enviar_registra_correo_historial_y_avanza_estado(self):
         respuesta = self.client.post(reverse('compradores_envio_masivo_enviar'), {
             'plantilla_id': self.plantilla.pk,

@@ -87,7 +87,7 @@ class ImportarCompradoresForm(forms.Form):
     archivo = forms.FileField(
         label='Archivo CSV o Excel',
         help_text='Columnas esperadas: nombre_empresa, pais, ciudad, sector, email, telefono, fuente, '
-                   'palabras_clave (opcional, separadas por coma — para alertas automáticas de inventario)',
+                   'palabras_clave (opcional, separadas por coma — alertas por correo si SMTP está configurado)',
         widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.csv,.xlsx,.xls'}),
     )
 

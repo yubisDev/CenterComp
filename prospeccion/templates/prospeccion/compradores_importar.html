@@ -25,7 +25,11 @@
                 <h6 class="mb-2">Columnas esperadas</h6>
                 <p class="small text-muted-soft mb-1">Obligatoria: <code>nombre_empresa</code></p>
                 <p class="small text-muted-soft mb-0">Opcionales: <code>pais</code>, <code>ciudad</code>, <code>sector</code>, <code>email</code>, <code>telefono</code>, <code>linkedin</code>, <code>facebook</code>, <code>instagram</code>, <code>sitio_web</code>, <code>fuente</code> (hunter, apollo, procolombia, camara_comercio, linkedin, manual), <code>palabras_clave</code> (separadas por coma)</p>
-                <p class="small text-muted-soft mb-0 mt-2"><code>palabras_clave</code> se usa para las alertas automáticas: si un producto nuevo coincide, se le avisa a este comprador por correo sin que nadie tenga que hacerlo a mano.</p>
+                {% if correo_saliente_configurado %}
+                <p class="small text-muted-soft mb-0 mt-2"><code>palabras_clave</code> se usa para las alertas automáticas: si un producto nuevo coincide, se le avisa a este comprador por correo.</p>
+                {% else %}
+                <p class="small text-muted-soft mb-0 mt-2"><code>palabras_clave</code> permite detectar coincidencias con productos nuevos. Las alertas por correo se activarán cuando se configure la cuenta corporativa de correo.</p>
+                {% endif %}
             </div>
         </div>
     </div>

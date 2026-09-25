@@ -5,6 +5,10 @@
 {% block page_subtitle %}<div class="subtitle">Filtra un grupo de compradores y envíales una plantilla en un solo lote</div>{% endblock %}
 {% block content %}
 
+{% if not correo_saliente_configurado %}
+<div class="alert alert-warning">El envío está deshabilitado: falta configurar la cuenta de correo corporativa en el servidor. No se enviarán ni registrarán correos hasta que esté lista.</div>
+{% endif %}
+
 <form method="get" id="filtroForm">
 <div class="row g-3 mb-3">
     <div class="col-12 col-lg-5">
@@ -48,6 +52,17 @@
                             {% endfor %}
                         </select>
                     </div>
+                </div>
+
+                <div class="mt-2">
+                    <label class="form-label d-block" for="productoInteres">Producto de interés</label>
+                    <select id="productoInteres" name="producto" class="form-select form-select-sm">
+                        <option value="">Todos los compradores</option>
+                        {% for producto in productos %}
+                            <option value="{{ producto.pk }}" {% if producto_id == producto.pk|stringformat:'s' %}selected{% endif %}>{{ producto.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-text">Al elegir un producto, solo se incluyen los compradores vinculados como interesados en él.</div>
                 </div>
 
                 <div class="d-flex align-items-center gap-2 mt-3">
@@ -104,6 +119,7 @@
 <form method="post" action="{% url 'compradores_envio_masivo_enviar' %}" id="envioForm">
     {% csrf_token %}
     <input type="hidden" name="plantilla_id" value="{{ plantilla_id }}">
+    <input type="hidden" name="producto_id" value="{{ producto_id }}">
 
     <div class="panel mb-3">
         <div class="p-4 pb-0">
@@ -154,7 +170,7 @@
         </div>
         {% if destinatarios %}
         <div class="p-4 d-flex justify-content-end">
-            <button type="submit" class="btn btn-primary btn-lg" {% if not plantilla_id %}disabled{% endif %}>
+            <button type="submit" class="btn btn-primary btn-lg" {% if not plantilla_id or not correo_saliente_configurado %}disabled{% endif %}>
                 {% icon 'mail' size=17 %} Revisar y enviar a los seleccionados
             </button>
         </div>
