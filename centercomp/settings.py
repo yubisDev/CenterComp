@@ -25,12 +25,11 @@ ALLOWED_HOSTS = [
     h.strip() for h in os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',') if h.strip()
 ]
 
-CSRF_TRUSTED_ORIGINS = []
-
-RAILWAY_PUBLIC_DOMAIN = os.environ.get('RAILWAY_PUBLIC_DOMAIN')
-if RAILWAY_PUBLIC_DOMAIN:
-    ALLOWED_HOSTS.append(RAILWAY_PUBLIC_DOMAIN)
-    CSRF_TRUSTED_ORIGINS.append(f'https://{RAILWAY_PUBLIC_DOMAIN}')
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get('CSRF_TRUSTED_ORIGINS', '').split(',')
+    if origin.strip()
+]
 
 # Render provee esta variable automáticamente en cada servicio.
 RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
@@ -83,9 +82,8 @@ WSGI_APPLICATION = 'centercomp.wsgi.application'
 
 
 # Database
-# En local usa SQLite. En producción (Render + Postgres de Supabase, o
-# Railway), define la variable de entorno DATABASE_URL con la cadena de
-# conexión de Postgres y se usará esa base sin cambiar nada más.
+# En local usa SQLite. En Render, define DATABASE_URL con la cadena de
+# conexión de PostgreSQL para producción.
 
 DATABASES = {
     'default': dj_database_url.config(

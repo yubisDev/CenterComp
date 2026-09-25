@@ -15,6 +15,9 @@ services:
         value: "False"
       - key: ALLOWED_HOSTS
         value: ""
+      # Configurar cuando se conecte el dominio propio de ISYN.
+      - key: CSRF_TRUSTED_ORIGINS
+        value: ""
       # Cadena de conexión de Postgres de Supabase (Project Settings → Database → Connection string → URI).
       - key: DATABASE_URL
         sync: false

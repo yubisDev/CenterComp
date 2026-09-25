@@ -30,7 +30,7 @@ The edge over a spreadsheet or a generic CRM (e.g. HubSpot) is the tight, single
 - The operator can deliberately send a templated email to a selected group of buyers, including prospects and buyers marked as interested. The bulk-email screen filters by status, country, sector, text search, and product of interest, and shows up to 300 recipients with email addresses before confirmation.
 - When a new product is created, the app automatically emails buyers whose saved interest keywords match that product, if email delivery and a template are configured. This is a separate inventory-match notification, not a bulk campaign.
 - Every outbound email is logged in the buyer's contact history. Bulk sends are started and confirmed by the operator; keyword-match notifications are triggered by creating a matching product.
-- Deploy target: Railway. SQLite locally, PostgreSQL in production via `DATABASE_URL`.
+- Deployment: currently hosted on Render at `https://isyn-crm.onrender.com/`; the plan is to migrate hosting away from Render and serve the CRM on a subdomain of `isynsubastas.com`. The destination host and subdomain are still to be chosen. SQLite locally; PostgreSQL in production via `DATABASE_URL`.
 
 ## Capabilities and Constraints
 
