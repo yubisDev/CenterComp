@@ -242,13 +242,27 @@ def comprador_eliminar(request, pk):
     return redirect('compradores_lista')
 
 
+def _url_segura(request, url, por_defecto):
+    """Solo redirige a direcciones de este mismo sitio (evita que un enlace
+    manipulado mande al usuario a otra página)."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+    if url and url_has_allowed_host_and_scheme(url, allowed_hosts={request.get_host()},
+                                               require_https=request.is_secure()):
+        return url
+    return por_defecto
+
+
 @login_required
 @require_POST
 def comprador_marcar_contactado(request, pk):
     comprador = get_object_or_404(Comprador, pk=pk)
+    next_url = _url_segura(request, request.POST.get('next'), reverse('compradores_lista'))
+    if comprador.estado != Comprador.Estado.POR_CONTACTAR:
+        # Ya avanzó en el embudo: no repetir el registro en el historial.
+        messages.info(request, f'{comprador.nombre_empresa} ya estaba en "{comprador.get_estado_display()}".')
+        return redirect(next_url)
     comprador.fecha_ultimo_contacto = timezone.now()
-    if comprador.estado == Comprador.Estado.POR_CONTACTAR:
-        comprador.estado = Comprador.Estado.CONTACTADO
+    comprador.estado = Comprador.Estado.CONTACTADO
     comprador.save()
     HistorialContacto.objects.create(
         comprador=comprador,
@@ -257,7 +271,6 @@ def comprador_marcar_contactado(request, pk):
         usuario=request.user,
     )
     messages.success(request, f'{comprador.nombre_empresa} marcado como contactado.')
-    next_url = request.POST.get('next') or reverse('compradores_lista')
     return redirect(next_url)
 
 
@@ -957,9 +970,13 @@ def proveedor_eliminar(request, pk):
 @require_POST
 def proveedor_marcar_contactado(request, pk):
     proveedor = get_object_or_404(Proveedor, pk=pk)
+    next_url = _url_segura(request, request.POST.get('next'), reverse('proveedores_lista'))
+    if proveedor.estado != Proveedor.Estado.POR_CONTACTAR:
+        # Ya avanzó en el embudo: no repetir el registro en el historial.
+        messages.info(request, f'{proveedor.nombre_empresa} ya estaba en "{proveedor.get_estado_display()}".')
+        return redirect(next_url)
     proveedor.fecha_ultimo_contacto = timezone.now()
-    if proveedor.estado == Proveedor.Estado.POR_CONTACTAR:
-        proveedor.estado = Proveedor.Estado.CONTACTADO
+    proveedor.estado = Proveedor.Estado.CONTACTADO
     proveedor.save()
     HistorialContactoProveedor.objects.create(
         proveedor=proveedor,
@@ -968,7 +985,6 @@ def proveedor_marcar_contactado(request, pk):
         usuario=request.user,
     )
     messages.success(request, f'{proveedor.nombre_empresa} marcado como contactado.')
-    next_url = request.POST.get('next') or reverse('proveedores_lista')
     return redirect(next_url)
 
 

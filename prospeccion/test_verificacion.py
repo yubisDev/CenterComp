@@ -340,3 +340,29 @@ class VigenciaTests(SimpleTestCase):
         self.assertIn(f'Hoy es {vigencia.hoy_texto()}', prompt)
         self.assertEqual([e['nombre_empresa'] for e in empresas], ['Nueva SA', 'Vieja SA'])
         self.assertEqual(empresas[1]['vigencia'], 'antigua')
+
+
+class MarcarContactadoTests(TestCase):
+    def setUp(self):
+        self.client.force_login(get_user_model().objects.create_user('op9', password='x'))
+
+    def test_boton_solo_para_por_contactar_y_sin_historial_repetido(self):
+        from .models import HistorialContacto
+        c = Comprador.objects.create(nombre_empresa='ACME', pais='Perú')
+        lista = self.client.get(reverse('compradores_lista')).content.decode()
+        self.assertIn('Marcar ACME como contactado', lista)
+
+        url = reverse('comprador_marcar_contactado', args=[c.pk])
+        self.client.post(url)
+        self.client.post(url)  # segundo clic (p. ej. pestaña vieja)
+        c.refresh_from_db()
+        self.assertEqual(c.estado, Comprador.Estado.CONTACTADO)
+        self.assertEqual(HistorialContacto.objects.filter(comprador=c).count(), 1)
+
+        lista = self.client.get(reverse('compradores_lista')).content.decode()
+        self.assertNotIn('Marcar ACME como contactado', lista)
+
+    def test_no_redirige_a_otro_sitio(self):
+        c = Comprador.objects.create(nombre_empresa='ACME', pais='Perú')
+        r = self.client.post(reverse('comprador_marcar_contactado', args=[c.pk]), {'next': 'https://malicioso.com/'})
+        self.assertEqual(r.url, reverse('compradores_lista'))

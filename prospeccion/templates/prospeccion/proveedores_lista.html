@@ -134,11 +134,13 @@
                             {% if proveedor.whatsapp_url %}
                             <a class="icon-btn icon-btn-chat" href="{{ proveedor.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp" aria-label="Contactar a {{ proveedor.nombre_empresa }} por WhatsApp">{% icon 'chat' %}</a>
                             {% endif %}
+                            {% if proveedor.estado == 'por_contactar' %}
                             <form method="post" action="{% url 'proveedor_marcar_contactado' proveedor.pk %}" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
                                 <button type="submit" class="icon-btn icon-btn-done" title="Marcar como contactado" aria-label="Marcar {{ proveedor.nombre_empresa }} como contactado">{% icon 'check' %}</button>
                             </form>
+                            {% endif %}
                         </div>
                     </td>
                 </tr>
