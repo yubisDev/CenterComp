@@ -38,7 +38,7 @@ DUDOSO = 'dudoso'
 DESCARTADO = 'descartado'
 SIN_VERIFICAR = 'sin_verificar'
 
-TIMEOUT_RED = 6  # segundos por cada revisión de red
+TIMEOUT_RED = 4  # segundos por cada revisión de red
 
 # La IA devuelve el país como texto libre ("Indonesia", "México", "USA"...).
 # phonenumbers necesita el código ISO de 2 letras para leer números locales.
@@ -275,9 +275,14 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True):
         verificacion[campo] = verificar_telefono(empresa.get(campo, ''), pais)
 
     if usar_red:
-        verificacion['email'] = verificar_email(empresa.get('email', ''), empresa.get('sitio_web', ''))
-        for campo in CAMPOS_URL:
-            verificacion[campo] = verificar_url(empresa.get(campo, ''), campo)
+        # El correo y el sitio web se revisan al mismo tiempo, no uno tras otro.
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            f_email = pool.submit(verificar_email, empresa.get('email', ''), empresa.get('sitio_web', ''))
+            f_web = pool.submit(verificar_url, empresa.get('sitio_web', ''), 'sitio_web')
+            verificacion['email'] = f_email.result()
+            verificacion['sitio_web'] = f_web.result()
+        for campo in ('linkedin_url', 'facebook_url', 'instagram_url'):
+            verificacion[campo] = verificar_url(empresa.get(campo, ''), campo)  # sin red, instantáneo
     else:
         if empresa.get('email'):
             ok = PATRON_EMAIL.match(empresa['email'].strip())

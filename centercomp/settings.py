@@ -145,6 +145,19 @@ BUSQUEDA_IA_LIMITE_DIARIO = int(os.environ.get('BUSQUEDA_IA_LIMITE_DIARIO', '20'
 # Verificación de datos de la IA: consultas DNS y de "¿la página responde?".
 # Ponlo en 0 solo si el servidor no tiene salida a internet.
 VERIFICACION_RED = os.environ.get('VERIFICACION_RED', '1') == '1'
+# Cuánto "piensa" Gemini antes de responder: low es lo más rápido. Vacío =
+# lo que el modelo traiga por defecto (más lento).
+GEMINI_NIVEL_RAZONAMIENTO = os.environ.get('GEMINI_NIVEL_RAZONAMIENTO', 'low')
+# Si se repite una búsqueda idéntica dentro de estos días, se reutiliza el
+# resultado guardado: es instantáneo y no gasta saldo. 0 = desactivado.
+BUSQUEDA_IA_CACHE_DIAS = int(os.environ.get('BUSQUEDA_IA_CACHE_DIAS', '3'))
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {'consola': {'class': 'logging.StreamHandler'}},
+    'loggers': {'prospeccion': {'handlers': ['consola'], 'level': 'INFO'}},
+}
 
 # Correo saliente. Solo se considera configurado cuando hay host y
 # credenciales SMTP; el backend de consola no cuenta como un envío real.

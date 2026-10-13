@@ -11,11 +11,15 @@ Reglas duras de este módulo, por diseño:
   diario y así nunca acercarse a un gasto inesperado.
 """
 import json
+import logging
 import re
+import time
 
 from django.conf import settings
 
 from . import verificacion
+
+logger = logging.getLogger(__name__)
 
 MAXIMO_POR_DEFECTO = 5
 MAXIMO_TECHO = 5  # nunca se le pide más que esto a la IA, sin importar lo que pase el llamador
@@ -162,7 +166,15 @@ def _buscar_con_ia(prompt):
         http_options = types.HttpOptions(timeout=90_000)  # ms — más margen: ahora busca más canales por empresa
         client = genai.Client(api_key=settings.GEMINI_API_KEY, http_options=http_options)
         grounding_tool = types.Tool(google_search=types.GoogleSearch())
-        config = types.GenerateContentConfig(tools=[grounding_tool])
+        opciones = {'tools': [grounding_tool]}
+        # Menos "pensamiento" = respuesta mucho más rápida y barata. Para buscar
+        # empresas y copiar sus datos no hace falta razonamiento profundo.
+        if settings.GEMINI_NIVEL_RAZONAMIENTO:
+            opciones['thinking_config'] = types.ThinkingConfig(
+                thinking_level=settings.GEMINI_NIVEL_RAZONAMIENTO,
+            )
+        config = types.GenerateContentConfig(**opciones)
+        inicio = time.monotonic()
         response = client.models.generate_content(
             model='gemini-3.7-flash',
             contents=prompt,
@@ -170,6 +182,8 @@ def _buscar_con_ia(prompt):
         )
     except Exception as exc:  # noqa: BLE001 — cualquier falla de red/API debe verse como mensaje amigable
         raise BusquedaIAError(f'La IA no respondió correctamente: {exc}') from exc
+
+    logger.info('Búsqueda IA: Gemini respondió en %.1f s', time.monotonic() - inicio)
 
     if not response.text:
         raise BusquedaIAError('La IA no devolvió ningún resultado.')
@@ -220,7 +234,10 @@ def _buscar_con_ia(prompt):
         pass
 
     # Capa de verificación: el prompt PIDE no inventar; aquí se COMPRUEBA.
+    inicio = time.monotonic()
     empresas = verificacion.verificar_empresas(
         empresas, texto_respaldado, usar_red=settings.VERIFICACION_RED,
     )
+    logger.info('Búsqueda IA: verificación de %d empresas en %.1f s',
+                len(empresas), time.monotonic() - inicio)
     return empresas, fuentes

@@ -127,3 +127,47 @@ class GuardarTests(TestCase):
         self.assertEqual(c.whatsapp, '+6281299998888')
         self.assertEqual(c.whatsapp_numero, '6281299998888')
         self.assertIn('Sitio web descartado', c.notas)
+
+
+class CacheBusquedaTests(TestCase):
+    def setUp(self):
+        self.usuario = get_user_model().objects.create_user('op2', password='x')
+        self.client.force_login(self.usuario)
+
+    def test_busqueda_identica_se_reutiliza_sin_llamar_a_la_ia(self):
+        previa = BusquedaIA.objects.create(
+            consulta='Revestimientos en Indonesia', usuario=self.usuario,
+            estado=BusquedaIA.Estado.LISTO, resultados=1, resultados_json=[{'nombre_empresa': 'PT X'}],
+        )
+        with mock.patch('prospeccion.views.threading.Thread') as hilo:
+            self.client.post(reverse('compradores_buscar_ia_ejecutar'),
+                             {'consulta': 'revestimientos en indonesia'})
+        hilo.assert_not_called()
+        self.assertEqual(self.client.session['ia_busqueda_id'], previa.pk)
+        self.assertEqual(BusquedaIA.objects.count(), 1)
+
+    @override_settings(BUSQUEDA_IA_CACHE_DIAS=0)
+    def test_cache_desactivado_lanza_busqueda_nueva(self):
+        BusquedaIA.objects.create(
+            consulta='Revestimientos en Indonesia', usuario=self.usuario,
+            estado=BusquedaIA.Estado.LISTO, resultados=1, resultados_json=[{'nombre_empresa': 'PT X'}],
+        )
+        with mock.patch('prospeccion.views.threading.Thread') as hilo:
+            self.client.post(reverse('compradores_buscar_ia_ejecutar'),
+                             {'consulta': 'Revestimientos en Indonesia'})
+        hilo.assert_called_once()
+        self.assertEqual(BusquedaIA.objects.count(), 2)
+
+
+class NivelRazonamientoTests(SimpleTestCase):
+    @override_settings(GEMINI_API_KEY='prueba', GEMINI_NIVEL_RAZONAMIENTO='low', VERIFICACION_RED=False)
+    def test_se_pide_razonamiento_bajo(self):
+        from google.genai import types
+        from . import ia_busqueda
+        respuesta = mock.Mock(text='[{"nombre_empresa": "PT X", "pais": "Indonesia"}]', candidates=[])
+        with mock.patch('google.genai.Client') as cliente:
+            cliente.return_value.models.generate_content.return_value = respuesta
+            empresas, _ = ia_busqueda.buscar_empresas('revestimientos Indonesia')
+        config = cliente.return_value.models.generate_content.call_args.kwargs['config']
+        self.assertEqual(config.thinking_config.thinking_level, types.ThinkingLevel.LOW)
+        self.assertEqual(empresas[0]['nombre_empresa'], 'PT X')

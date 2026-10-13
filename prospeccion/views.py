@@ -1,6 +1,7 @@
 import csv
 import io
 import threading
+from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 from urllib.parse import quote
 
@@ -13,7 +14,7 @@ from django.db.models import Count, Q, Sum
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
-from django.utils import timezone
+from django.utils import timezone, formats
 from django.views.decorators.http import require_POST
 
 from . import ia_busqueda
@@ -606,6 +607,30 @@ def _notas_verificacion(item):
     return ('\n\nVerificación automática:\n' + '\n'.join(lineas)) if lineas else ''
 
 
+def _busqueda_reciente_igual(usuario, consulta, tipo):
+    """Una búsqueda idéntica (mismo texto y tipo) hecha hace poco y con
+    resultados: se reutiliza en vez de volver a pagarle a la IA."""
+    dias = settings.BUSQUEDA_IA_CACHE_DIAS
+    if dias <= 0:
+        return None
+    return (
+        BusquedaIA.objects.filter(
+            usuario=usuario, tipo=tipo, consulta__iexact=consulta.strip(),
+            estado=BusquedaIA.Estado.LISTO, resultados__gt=0,
+            creado_en__gte=timezone.now() - timedelta(days=dias),
+        ).order_by('-creado_en').first()
+    )
+
+
+def _avisar_reutilizada(request, busqueda):
+    fecha = formats.date_format(timezone.localtime(busqueda.creado_en), 'j M, H:i')
+    messages.info(
+        request,
+        f'Mostrando los resultados de esta misma búsqueda del {fecha}, sin gastar saldo. '
+        'Para una búsqueda nueva, cambia o agrega alguna palabra.',
+    )
+
+
 def _ejecutar_busqueda_en_segundo_plano(busqueda_id, consulta, funcion_busqueda=ia_busqueda.buscar_empresas):
     from django.db import connections
 
@@ -665,6 +690,13 @@ def compradores_buscar_ia_ejecutar(request):
         return redirect('compradores_buscar_ia')
 
     consulta = form.cleaned_data['consulta']
+
+    anterior = _busqueda_reciente_igual(request.user, consulta, BusquedaIA.Tipo.COMPRADOR)
+    if anterior:
+        request.session['ia_busqueda_id'] = anterior.pk
+        request.session['ia_consulta'] = consulta
+        _avisar_reutilizada(request, anterior)
+        return redirect('compradores_buscar_ia')
 
     hoy = timezone.localdate()
     busquedas_hoy = BusquedaIA.objects.filter(creado_en__date=hoy).count()
@@ -971,6 +1003,13 @@ def proveedores_buscar_ia_ejecutar(request):
         return redirect('proveedores_buscar_ia')
 
     consulta = form.cleaned_data['consulta']
+
+    anterior = _busqueda_reciente_igual(request.user, consulta, BusquedaIA.Tipo.PROVEEDOR)
+    if anterior:
+        request.session['ia_busqueda_proveedor_id'] = anterior.pk
+        request.session['ia_consulta_proveedor'] = consulta
+        _avisar_reutilizada(request, anterior)
+        return redirect('proveedores_buscar_ia')
 
     hoy = timezone.localdate()
     busquedas_hoy = BusquedaIA.objects.filter(creado_en__date=hoy).count()
