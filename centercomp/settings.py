@@ -151,6 +151,9 @@ GEMINI_NIVEL_RAZONAMIENTO = os.environ.get('GEMINI_NIVEL_RAZONAMIENTO', 'low')
 # Si se repite una búsqueda idéntica dentro de estos días, se reutiliza el
 # resultado guardado: es instantáneo y no gasta saldo. 0 = desactivado.
 BUSQUEDA_IA_CACHE_DIAS = int(os.environ.get('BUSQUEDA_IA_CACHE_DIAS', '3'))
+# Búsqueda extra en Google dedicada a encontrar el LinkedIn de cada empresa.
+# Suma unos segundos y una llamada a Gemini por búsqueda. 0 = desactivada.
+BUSQUEDA_LINKEDIN = os.environ.get('BUSQUEDA_LINKEDIN', '1') == '1'
 
 # En redes corporativas que inspeccionan HTTPS, Python no conoce el certificado
 # de la empresa y fallan las conexiones (verificación, Telegram...). Si está

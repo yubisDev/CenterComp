@@ -21,6 +21,7 @@ from . import verificacion
 
 logger = logging.getLogger(__name__)
 
+MODELO = 'gemini-3.7-flash'
 MAXIMO_POR_DEFECTO = 5
 MAXIMO_TECHO = 5  # nunca se le pide más que esto a la IA, sin importar lo que pase el llamador
 
@@ -146,6 +147,82 @@ def buscar_proveedores(consulta, maximo=MAXIMO_POR_DEFECTO):
     return _buscar_con_ia(PROMPT_PROVEEDORES.format(consulta=consulta.strip(), maximo=maximo))
 
 
+PROMPT_LINKEDIN = """\
+Busca en Google la página de LinkedIn de cada una de estas empresas. Para cada \
+una, haz una búsqueda como "<nombre> <país> site:linkedin.com/company".
+
+{lista}
+
+Reglas estrictas:
+- Solo devuelve una URL de LinkedIn si la viste en los resultados de búsqueda \
+y es la página de esa MISMA empresa (mismo nombre y país o sitio web).
+- La URL debe ser de la forma https://www.linkedin.com/company/... (no de una \
+persona, no un enlace de Google ni de vertexaisearch).
+- Si no la encuentras, deja "linkedin_url" como "". NUNCA la armes a partir \
+del nombre de la empresa.
+
+Responde ÚNICAMENTE con un array JSON, sin texto antes ni después:
+[{{"nombre_empresa": "...", "linkedin_url": "..."}}]
+"""
+
+
+def _normalizar_nombre(texto):
+    return re.sub(r'[^a-z0-9]', '', (texto or '').lower())
+
+
+def _completar_linkedin(client, types, empresas):
+    """Paso dedicado: UNA búsqueda extra en Google solo para los LinkedIn de las
+    empresas que no lo tienen. Devuelve las fuentes que consultó, para que la
+    verificación pueda confirmar cada enlace. Si algo falla, no rompe la búsqueda."""
+    faltan = [e for e in empresas if not e.get('linkedin_url')]
+    if not faltan:
+        return []
+    lista = '\n'.join(
+        f"- {e['nombre_empresa']} ({e.get('pais') or 'país desconocido'})"
+        + (f" — sitio web: {e['sitio_web']}" if e.get('sitio_web') else '')
+        for e in faltan
+    )
+    opciones = {
+        'tools': [types.Tool(google_search=types.GoogleSearch())],
+        'automatic_function_calling': types.AutomaticFunctionCallingConfig(disable=True),
+    }
+    if settings.GEMINI_NIVEL_RAZONAMIENTO:
+        opciones['thinking_config'] = types.ThinkingConfig(thinking_level=settings.GEMINI_NIVEL_RAZONAMIENTO)
+    inicio = time.monotonic()
+    try:
+        response = client.models.generate_content(
+            model=MODELO, contents=PROMPT_LINKEDIN.format(lista=lista),
+            config=types.GenerateContentConfig(**opciones),
+        )
+        encontrados = _extraer_json(response.text or '')
+    except Exception as exc:  # noqa: BLE001 — el LinkedIn es un extra: si falla, se sigue sin él
+        logger.warning('Búsqueda IA: no se pudo completar LinkedIn: %s', exc)
+        return []
+
+    por_nombre = {_normalizar_nombre(e['nombre_empresa']): e for e in faltan}
+    completados = 0
+    for item in encontrados:
+        if not isinstance(item, dict):
+            continue
+        url = str(item.get('linkedin_url') or '').strip()[:200]
+        empresa = por_nombre.get(_normalizar_nombre(item.get('nombre_empresa')))
+        if empresa is not None and url and ('linkedin.com/company/' in url or 'grounding-api-redirect' in url):
+            empresa['linkedin_url'] = url
+            completados += 1
+
+    fuentes = []
+    try:
+        metadata = response.candidates[0].grounding_metadata
+        for chunk in (metadata.grounding_chunks or []) if metadata else []:
+            if chunk.web:
+                fuentes.append({'titulo': chunk.web.title, 'url': chunk.web.uri})
+    except (AttributeError, IndexError, TypeError):
+        pass
+    logger.info('Búsqueda IA: LinkedIn completado en %d de %d empresas (%.1f s)',
+                completados, len(faltan), time.monotonic() - inicio)
+    return fuentes
+
+
 def _buscar_con_ia(prompt):
     """Llama a Gemini con grounding real y devuelve (lista_de_empresas, lista_de_fuentes).
     Lanza BusquedaIAError con un mensaje entendible si algo falla (sin API key,
@@ -181,7 +258,7 @@ def _buscar_con_ia(prompt):
         config = types.GenerateContentConfig(**opciones)
         inicio = time.monotonic()
         response = client.models.generate_content(
-            model='gemini-3.7-flash',
+            model=MODELO,
             contents=prompt,
             config=config,
         )
@@ -224,6 +301,12 @@ def _buscar_con_ia(prompt):
                     fuentes.append({'titulo': chunk.web.title, 'url': chunk.web.uri})
     except (AttributeError, IndexError, TypeError):
         pass
+
+    # Paso dedicado a LinkedIn (una búsqueda extra) para las que no lo trajeron.
+    if settings.BUSQUEDA_LINKEDIN:
+        for fuente in _completar_linkedin(client, types, empresas):
+            if fuente not in fuentes:
+                fuentes.append(fuente)
 
     # Texto de la respuesta que Gemini marcó como respaldado por alguna página
     # real. Se usa para detectar teléfonos/correos que la IA "completó" sola.

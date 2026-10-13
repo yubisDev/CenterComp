@@ -247,3 +247,55 @@ class PaisesTests(SimpleTestCase):
     def test_pais_desconocido_con_indicativo_si_se_verifica(self):
         r = v.verificar_telefono('+49 30 12345678', 'Reino de Fantasía')
         self.assertIn(r['estado'], (v.VERIFICADO, v.DUDOSO))
+
+
+@override_settings(GEMINI_API_KEY='prueba', VERIFICACION_RED=True, BUSQUEDA_LINKEDIN=True)
+class BusquedaLinkedInTests(SimpleTestCase):
+    def _respuesta(self, texto, urls=()):
+        chunks = [mock.Mock(web=mock.Mock(title='linkedin.com', uri=u)) for u in urls]
+        metadata = mock.Mock(grounding_chunks=chunks, grounding_supports=[])
+        return mock.Mock(text=texto, candidates=[mock.Mock(grounding_metadata=metadata)])
+
+    def _buscar(self, respuestas, **ajustes):
+        from . import ia_busqueda
+        with mock.patch('google.genai.Client') as cliente, \
+                mock.patch.object(v, '_dominio_recibe_correo', return_value=True), \
+                mock.patch.object(v, '_pagina_responde', return_value=True), \
+                override_settings(**ajustes):
+            cliente.return_value.models.generate_content.side_effect = respuestas
+            empresas, fuentes = ia_busqueda.buscar_empresas('importadores de café en Alemania')
+        return cliente.return_value.models.generate_content, empresas, fuentes
+
+    PRINCIPAL = ('[{"nombre_empresa": "Bernhard Rothfos GmbH", "pais": "Alemania", '
+                 '"sitio_web": "https://rothfos.de"}, {"nombre_empresa": "Kaffee X", "pais": "Alemania"}]')
+
+    def test_paso_dedicado_encuentra_y_confirma_el_linkedin(self):
+        linkedin = 'https://de.linkedin.com/company/bernhard-rothfos-gmbh'
+        llamada, empresas, fuentes = self._buscar([
+            self._respuesta(self.PRINCIPAL),
+            self._respuesta('[{"nombre_empresa": "Bernhard Rothfos GmbH", "linkedin_url": "%s"}, '
+                            '{"nombre_empresa": "Kaffee X", "linkedin_url": ""}]' % linkedin, urls=[linkedin]),
+        ])
+        self.assertEqual(llamada.call_count, 2)
+        rothfos, kaffee = empresas
+        self.assertEqual(rothfos['linkedin_url'], linkedin)
+        self.assertEqual(rothfos['verificacion']['linkedin_url']['estado'], v.VERIFICADO)
+        self.assertEqual(rothfos['linkedin_busqueda'], '')
+        self.assertEqual(kaffee['linkedin_url'], '')
+        self.assertTrue(kaffee['linkedin_busqueda'])
+
+    def test_si_el_paso_de_linkedin_falla_la_busqueda_sigue(self):
+        llamada, empresas, _ = self._buscar([self._respuesta(self.PRINCIPAL), RuntimeError('cuota agotada')])
+        self.assertEqual(len(empresas), 2)
+
+    def test_desactivado_no_hace_llamada_extra(self):
+        llamada, empresas, _ = self._buscar([self._respuesta(self.PRINCIPAL)], BUSQUEDA_LINKEDIN=False)
+        self.assertEqual(llamada.call_count, 1)
+
+    def test_linkedin_armado_sin_respaldo_queda_dudoso(self):
+        _, empresas, _ = self._buscar([
+            self._respuesta(self.PRINCIPAL),
+            self._respuesta('[{"nombre_empresa": "Kaffee X", "linkedin_url": "https://www.linkedin.com/company/kaffee-x"}]',
+                            urls=['https://kaffee-x.de/']),
+        ])
+        self.assertEqual(empresas[1]['verificacion']['linkedin_url']['estado'], v.DUDOSO)
