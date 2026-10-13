@@ -17,7 +17,7 @@ import time
 
 from django.conf import settings
 
-from . import verificacion
+from . import verificacion, vigencia
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +87,8 @@ PROMPT_COMPRADORES = """\
 Eres un asistente de investigación B2B para un exportador colombiano que \
 busca compradores potenciales para sus productos.
 
-Usa la búsqueda de Google para encontrar EMPRESAS REALES que coincidan con \
-esta descripción: "{consulta}"
+Hoy es {hoy}. Usa la búsqueda de Google para encontrar EMPRESAS REALES que \
+coincidan con esta descripción: "{consulta}"
 
 """ + REGLAS_COMUNES
 
@@ -99,8 +99,8 @@ Eres un asistente de investigación para ISYN, una empresa de subastas y \
 corretaje de negocios que busca EMPRESAS QUE NECESITEN VENDER O SUBASTAR \
 ACTIVOS — no busques compradores, busca posibles consignantes/proveedores.
 
-Usa la búsqueda de Google para encontrar EMPRESAS REALES que coincidan con \
-esta descripción: "{consulta}"
+Hoy es {hoy}. Usa la búsqueda de Google para encontrar EMPRESAS REALES que \
+coincidan con esta descripción: "{consulta}"
 
 Da prioridad a empresas con señales recientes de que podrían necesitar un \
 servicio de subasta o venta de activos: cierre de operaciones, \
@@ -108,9 +108,16 @@ reestructuración, liquidación, desmantelamiento de plantas o equipos, \
 quiebra, fusión o adquisición reciente, reducción de personal a gran \
 escala, o venta anunciada de maquinaria/inventario/flota.
 
+Prefiere señales de los últimos 12 meses (cuenta desde la fecha de hoy), \
+pero si una señal más antigua es relevante, inclúyela igual.
+
 En el campo "resumen" explica brevemente QUÉ señal encontraste de que esta \
-empresa podría necesitar vender o subastar algo (ej. "anunció el cierre de \
-su planta en Cali en marzo 2026").
+empresa podría necesitar vender o subastar algo y en qué medio salió (ej. \
+"anunció el cierre de su planta en Cali, según El Tiempo").
+
+Agrega a cada empresa el campo "fecha_senal" con la fecha de la noticia o \
+anuncio, en formato AAAA-MM-DD (o AAAA-MM si no hay día). Si no encontraste \
+la fecha, déjalo como "" — NO la adivines.
 
 """ + REGLAS_COMUNES
 
@@ -137,14 +144,16 @@ def _extraer_json(texto):
 def buscar_empresas(consulta, maximo=MAXIMO_POR_DEFECTO):
     """Devuelve (lista_de_empresas, lista_de_fuentes) de posibles COMPRADORES."""
     maximo = min(maximo, MAXIMO_TECHO)
-    return _buscar_con_ia(PROMPT_COMPRADORES.format(consulta=consulta.strip(), maximo=maximo))
+    return _buscar_con_ia(PROMPT_COMPRADORES.format(
+        consulta=consulta.strip(), maximo=maximo, hoy=vigencia.hoy_texto()))
 
 
 def buscar_proveedores(consulta, maximo=MAXIMO_POR_DEFECTO):
     """Devuelve (lista_de_empresas, lista_de_fuentes) de posibles PROVEEDORES/
     consignantes — empresas que podrían necesitar vender o subastar activos."""
     maximo = min(maximo, MAXIMO_TECHO)
-    return _buscar_con_ia(PROMPT_PROVEEDORES.format(consulta=consulta.strip(), maximo=maximo))
+    return _buscar_con_ia(PROMPT_PROVEEDORES.format(
+        consulta=consulta.strip(), maximo=maximo, hoy=vigencia.hoy_texto()), proveedores=True)
 
 
 PROMPT_LINKEDIN = """\
@@ -223,7 +232,7 @@ def _completar_linkedin(client, types, empresas):
     return fuentes
 
 
-def _buscar_con_ia(prompt):
+def _buscar_con_ia(prompt, proveedores=False):
     """Llama a Gemini con grounding real y devuelve (lista_de_empresas, lista_de_fuentes).
     Lanza BusquedaIAError con un mensaje entendible si algo falla (sin API key,
     sin crédito, la IA no devolvió JSON válido, etc.)."""
@@ -288,6 +297,7 @@ def _buscar_con_ia(prompt):
             'facebook_url': str(item.get('facebook_url', ''))[:200],
             'instagram_url': str(item.get('instagram_url', ''))[:200],
             'resumen': str(item.get('resumen', ''))[:300],
+            'fecha_senal': str(item.get('fecha_senal', ''))[:20],
         })
         if len(empresas) >= MAXIMO_TECHO:
             break  # tope duro en código: no confiamos solo en que el prompt se respete
@@ -334,4 +344,6 @@ def _buscar_con_ia(prompt):
     )
     logger.info('Búsqueda IA: verificación de %d empresas en %.1f s',
                 len(empresas), time.monotonic() - inicio)
+    if proveedores:
+        empresas = vigencia.etiquetar_y_ordenar(empresas)
     return empresas, fuentes

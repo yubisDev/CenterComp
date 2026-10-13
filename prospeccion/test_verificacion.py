@@ -299,3 +299,44 @@ class BusquedaLinkedInTests(SimpleTestCase):
                             urls=['https://kaffee-x.de/']),
         ])
         self.assertEqual(empresas[1]['verificacion']['linkedin_url']['estado'], v.DUDOSO)
+
+
+class VigenciaTests(SimpleTestCase):
+    def test_leer_fechas_en_varios_formatos(self):
+        from datetime import date
+        from . import vigencia
+        self.assertEqual(vigencia.leer_fecha('2026-03-15'), date(2026, 3, 15))
+        self.assertEqual(vigencia.leer_fecha('2025-11'), date(2025, 11, 1))
+        self.assertEqual(vigencia.leer_fecha('marzo de 2024'), date(2024, 3, 1))
+        self.assertEqual(vigencia.leer_fecha('Mar 2024'), date(2024, 3, 1))
+        self.assertEqual(vigencia.leer_fecha('2021'), date(2021, 1, 1))
+        self.assertIsNone(vigencia.leer_fecha(''))
+        self.assertIsNone(vigencia.leer_fecha('hace poco'))
+
+    @override_settings(SENAL_MESES_RECIENTE=12)
+    def test_clasificar_y_ordenar(self):
+        from datetime import date
+        from . import vigencia
+        hoy = date(2026, 10, 13)
+        empresas = [{'nombre_empresa': 'Vieja', 'fecha_senal': '2021-05'},
+                    {'nombre_empresa': 'Sin', 'fecha_senal': ''},
+                    {'nombre_empresa': 'Nueva', 'fecha_senal': '2026-08-02'},
+                    {'nombre_empresa': 'Futura', 'fecha_senal': '2027-01'}]
+        orden = vigencia.etiquetar_y_ordenar(empresas, hoy)
+        self.assertEqual([e['nombre_empresa'] for e in orden], ['Nueva', 'Futura', 'Sin', 'Vieja'])
+        self.assertEqual([e['vigencia'] for e in orden], ['reciente', 'reciente', 'sin_fecha', 'antigua'])
+
+    @override_settings(GEMINI_API_KEY='prueba', VERIFICACION_RED=False, BUSQUEDA_LINKEDIN=False)
+    def test_prompt_lleva_la_fecha_de_hoy_y_proveedores_se_ordenan(self):
+        from . import ia_busqueda
+        texto = ('[{"nombre_empresa": "Vieja SA", "pais": "Perú", "fecha_senal": "2019-02"},'
+                 ' {"nombre_empresa": "Nueva SA", "pais": "Perú", "fecha_senal": "%s"}]'
+                 % __import__('django.utils.timezone', fromlist=['x']).localdate().isoformat())
+        with mock.patch('google.genai.Client') as cliente:
+            cliente.return_value.models.generate_content.return_value = mock.Mock(text=texto, candidates=[])
+            empresas, _ = ia_busqueda.buscar_proveedores('minería cerrando en Perú')
+        prompt = cliente.return_value.models.generate_content.call_args.kwargs['contents']
+        from . import vigencia
+        self.assertIn(f'Hoy es {vigencia.hoy_texto()}', prompt)
+        self.assertEqual([e['nombre_empresa'] for e in empresas], ['Nueva SA', 'Vieja SA'])
+        self.assertEqual(empresas[1]['vigencia'], 'antigua')

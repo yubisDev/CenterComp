@@ -92,7 +92,13 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
                         <td><input type="checkbox" class="form-check-input fila-seleccion" name="seleccion" value="{{ forloop.counter0 }}"></td>
                         <td><strong>{{ empresa.nombre_empresa }}</strong></td>
                         <td class="text-muted-soft">{{ empresa.pais }}{% if empresa.ciudad %} · {{ empresa.ciudad }}{% endif %}{% if empresa.sector %}<br>{{ empresa.sector }}{% endif %}</td>
-                        <td class="text-muted-soft small">{{ empresa.resumen|default:'—' }}</td>
+                        <td class="text-muted-soft small">
+                            {% if empresa.vigencia == 'reciente' %}<span class="verif verif-ok" title="Señal de los últimos {{ meses_reciente }} meses">Reciente</span>
+                            {% elif empresa.vigencia == 'antigua' %}<span class="verif verif-dudoso" title="Señal de hace más de {{ meses_reciente }} meses: confirma que siga vigente">Antigua</span>
+                            {% elif empresa.vigencia == 'sin_fecha' %}<span class="verif verif-pendiente" title="La IA no encontró la fecha de la señal: revísala">Sin fecha</span>{% endif %}
+                            {% if empresa.fecha_senal %}<span class="text-nowrap">{{ empresa.fecha_senal }}</span>{% endif %}
+                            <div>{{ empresa.resumen|default:'—' }}</div>
+                        </td>
                         <td>
                             {% include 'prospeccion/parciales/contacto_ia.html' %}
                         </td>

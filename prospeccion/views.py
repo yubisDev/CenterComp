@@ -604,6 +604,11 @@ def _notas_verificacion(item):
                       f"{(item.get('verificacion') or {}).get(campo, {}).get('motivo', '')}")
     if item.get('whatsapp_posible'):
         lineas.append('- El teléfono es móvil: posible WhatsApp (sin confirmar).')
+    if item.get('vigencia'):
+        textos = {'reciente': 'reciente', 'antigua': 'antigua, confirmar que siga vigente',
+                  'sin_fecha': 'sin fecha, revisar'}
+        fecha = f" ({item['fecha_senal']})" if item.get('fecha_senal') else ''
+        lineas.append(f"- Señal de venta{fecha}: {textos.get(item['vigencia'], item['vigencia'])}.")
     return ('\n\nVerificación automática:\n' + '\n'.join(lineas)) if lineas else ''
 
 
@@ -989,6 +994,7 @@ def proveedores_buscar_ia(request):
         'resultados': busqueda.resultados_json if busqueda and busqueda.estado == BusquedaIA.Estado.LISTO else None,
         'fuentes': (busqueda.fuentes_json or []) if busqueda and busqueda.estado == BusquedaIA.Estado.LISTO else [],
         'consulta_previa': request.session.get('ia_consulta_proveedor', ''),
+        'meses_reciente': settings.SENAL_MESES_RECIENTE,
         'ia_configurada': bool(settings.GEMINI_API_KEY),
     }
     return render(request, 'prospeccion/proveedores_buscar_ia.html', context)

@@ -154,6 +154,9 @@ BUSQUEDA_IA_CACHE_DIAS = int(os.environ.get('BUSQUEDA_IA_CACHE_DIAS', '3'))
 # Búsqueda extra en Google dedicada a encontrar el LinkedIn de cada empresa.
 # Suma unos segundos y una llamada a Gemini por búsqueda. 0 = desactivada.
 BUSQUEDA_LINKEDIN = os.environ.get('BUSQUEDA_LINKEDIN', '1') == '1'
+# Proveedores: una señal de venta de hasta estos meses se marca como "Reciente";
+# las más viejas se muestran igual, marcadas como "Antigua" y al final.
+SENAL_MESES_RECIENTE = int(os.environ.get('SENAL_MESES_RECIENTE', '12'))
 
 # En redes corporativas que inspeccionan HTTPS, Python no conoce el certificado
 # de la empresa y fallan las conexiones (verificación, Telegram...). Si está
