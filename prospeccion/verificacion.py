@@ -16,11 +16,13 @@ si una página responde, sin leer ni guardar su contenido.
 """
 import re
 import socket
+import unicodedata
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import quote_plus, urlparse
 
 import phonenumbers
 from phonenumbers import NumberParseException, PhoneNumberType
+from phonenumbers.geocoder import _region_display_name
 
 try:  # dnspython es opcional: sin él se usa una revisión más simple
     import dns.exception
@@ -57,6 +59,9 @@ PAISES_ISO = {
     'emiratos arabes unidos': 'AE', 'emiratos árabes unidos': 'AE', 'uae': 'AE',
     'canada': 'CA', 'canadá': 'CA', 'corea del sur': 'KR', 'south korea': 'KR',
     'japon': 'JP', 'japón': 'JP', 'japan': 'JP',
+    # Nombres que la librería escribe distinto a como se suele escribir:
+    'países bajos': 'NL', 'paises bajos': 'NL', 'chequia': 'CZ', 'república checa': 'CZ',
+    'arabia saudí': 'SA', 'arabia saudi': 'SA', 'corea': 'KR', 'hong kong': 'HK', 'taiwán': 'TW', 'taiwan': 'TW', 'macedonia': 'MK',
 }
 
 CORREOS_GRATUITOS = {
@@ -83,8 +88,33 @@ def _dominio(url_o_email):
     return host[4:] if host.startswith('www.') else host
 
 
+def _normalizar(texto):
+    """'  Perú ' -> 'peru' (sin tildes ni mayúsculas, para comparar nombres)."""
+    texto = unicodedata.normalize('NFKD', (texto or '').strip().lower())
+    return ''.join(ch for ch in texto if not unicodedata.combining(ch))
+
+
+def _construir_paises():
+    """Nombres de TODOS los países que conoce la librería de teléfonos, en
+    español e inglés, más los alias escritos a mano arriba (USA, EEUU...)."""
+    paises = {}
+    for region in phonenumbers.SUPPORTED_REGIONS:
+        for idioma in ('es', 'en'):
+            nombre = _region_display_name(region, idioma)
+            if nombre:
+                paises.setdefault(_normalizar(nombre), region)
+    paises.update({_normalizar(nombre): region for nombre, region in PAISES_ISO.items()})
+    return paises
+
+
+_PAISES = _construir_paises()
+
+
 def codigo_pais(pais):
-    return PAISES_ISO.get((pais or '').strip().lower())
+    pais = (pais or '').strip()
+    if len(pais) == 2 and pais.upper() in phonenumbers.SUPPORTED_REGIONS:
+        return pais.upper()  # ya viene como código ISO (ej. "DE")
+    return _PAISES.get(_normalizar(pais))
 
 
 # ---------------------------------------------------------------- teléfonos
@@ -96,6 +126,8 @@ def verificar_telefono(numero, pais=''):
     if not numero:
         return None
     region = codigo_pais(pais)
+    if not region and not numero.strip().startswith(('+', '00')):
+        return _resultado(SIN_VERIFICAR, f'Sin indicativo y no se reconoce el país "{pais}"')
     try:
         parseado = phonenumbers.parse(numero, region)
     except NumberParseException:

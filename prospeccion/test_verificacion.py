@@ -221,3 +221,24 @@ class RedesInventadasTests(SimpleTestCase):
         with mock.patch.object(v.requests, 'head', return_value=respuesta):
             reales = v.resolver_fuentes(['https://vertexaisearch.cloud.google.com/grounding-api-redirect/1'])
         self.assertEqual(reales, ['https://www.linkedin.com/company/x'])
+
+
+class PaisesTests(SimpleTestCase):
+    def test_reconoce_paises_fuera_de_la_lista_manual(self):
+        for nombre, codigo in [('Países Bajos', 'NL'), ('Holanda', 'NL'), ('Arabia Saudita', 'SA'),
+                               ('Netherlands', 'NL'), ('Marruecos', 'MA'), ('Perú', 'PE'),
+                               ('peru', 'PE'), ('USA', 'US'), ('DE', 'DE')]:
+            self.assertEqual(v.codigo_pais(nombre), codigo, nombre)
+
+    def test_numero_local_de_pais_no_listado_antes(self):
+        r = v.verificar_telefono('0612345678', 'Países Bajos')
+        self.assertEqual(r['estado'], v.VERIFICADO)
+        self.assertEqual(r['normalizado'], '+31612345678')
+
+    def test_pais_desconocido_sin_indicativo_no_se_descarta(self):
+        r = v.verificar_telefono('612 345 678', 'Reino de Fantasía')
+        self.assertEqual(r['estado'], v.SIN_VERIFICAR)
+
+    def test_pais_desconocido_con_indicativo_si_se_verifica(self):
+        r = v.verificar_telefono('+49 30 12345678', 'Reino de Fantasía')
+        self.assertIn(r['estado'], (v.VERIFICADO, v.DUDOSO))
