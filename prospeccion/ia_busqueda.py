@@ -30,6 +30,11 @@ Instagram, su número de WhatsApp (solo si la empresa lo publica como \
 WhatsApp, por ejemplo con un enlace wa.me), además del correo, teléfono y \
 sitio web — igual que buscarías el resto de sus datos.
 
+Para el LinkedIn, haz una búsqueda específica por empresa, por ejemplo \
+"<nombre de la empresa> site:linkedin.com/company", y copia la URL real de \
+linkedin.com/company/... que aparezca en los resultados (no un enlace de \
+Google ni de vertexaisearch).
+
 Busca en el idioma del país además de en español e inglés (por ejemplo, \
 en Indonesia usa términos en indonesio).
 

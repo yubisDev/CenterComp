@@ -171,3 +171,23 @@ class NivelRazonamientoTests(SimpleTestCase):
         config = cliente.return_value.models.generate_content.call_args.kwargs['config']
         self.assertEqual(config.thinking_config.thinking_level, types.ThinkingLevel.LOW)
         self.assertEqual(empresas[0]['nombre_empresa'], 'PT X')
+
+
+class LinkedInTests(SimpleTestCase):
+    def test_redireccion_de_google_se_cambia_por_el_enlace_real(self):
+        respuesta = mock.Mock(headers={'Location': 'https://www.linkedin.com/company/pelapis-nusantara'})
+        empresa = dict(EmpresaTests.EMPRESA,
+                       linkedin_url='https://vertexaisearch.cloud.google.com/grounding-api-redirect/AbC123')
+        with mock.patch.object(v.requests, 'head', return_value=respuesta), \
+                mock.patch.object(v, '_dominio_recibe_correo', return_value=True), \
+                mock.patch.object(v, '_pagina_responde', return_value=True):
+            e = v.verificar_empresa(empresa)
+        self.assertEqual(e['linkedin_url'], 'https://www.linkedin.com/company/pelapis-nusantara')
+        self.assertEqual(e['verificacion']['linkedin_url']['estado'], v.SIN_VERIFICAR)
+        self.assertEqual(e['linkedin_busqueda'], '')
+
+    def test_sin_linkedin_ofrece_enlace_de_busqueda(self):
+        e = v.verificar_empresa(EmpresaTests.EMPRESA, usar_red=False)
+        self.assertIn('linkedin.com/search/results/companies/?keywords=PT+Ejemplo+Pelapis', e['linkedin_busqueda'])
+        html = render_to_string('prospeccion/parciales/contacto_ia.html', {'empresa': e})
+        self.assertIn('Buscar en LinkedIn', html)

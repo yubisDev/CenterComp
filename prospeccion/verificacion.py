@@ -17,7 +17,7 @@ si una página responde, sin leer ni guardar su contenido.
 import re
 import socket
 from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 import phonenumbers
 from phonenumbers import NumberParseException, PhoneNumberType
@@ -251,6 +251,39 @@ def aparece_en_fuentes(valor, campo, texto_respaldado):
     return valor.strip().lower() in texto_respaldado.lower()
 
 
+# ------------------------------------------- enlaces de redirección de Google
+
+DOMINIOS_REDIRECCION = ('vertexaisearch.cloud.google.com', 'www.google.com', 'google.com')
+
+
+def es_redireccion(url):
+    host = _dominio(url) if url else ''
+    return host in DOMINIOS_REDIRECCION or 'grounding-api-redirect' in (url or '')
+
+
+def resolver_redireccion(url):
+    """Gemini a veces devuelve, en lugar del enlace real (ej. LinkedIn), el
+    enlace intermedio de Google por el que llegó a la página. Aquí se sigue
+    ese enlace para obtener la dirección real. Si no se puede, se devuelve ''."""
+    if not es_redireccion(url) or requests is None:
+        return url
+    try:
+        r = requests.head(url, timeout=TIMEOUT_RED, allow_redirects=False,
+                          headers={'User-Agent': 'Mozilla/5.0 (verificador ISYN CRM)'})
+        destino = r.headers.get('Location', '')
+        if destino and not es_redireccion(destino):
+            return destino
+    except requests.exceptions.RequestException:
+        pass
+    return ''
+
+
+def enlace_busqueda_linkedin(nombre_empresa):
+    """Cuando no se encontró el LinkedIn, un enlace que abre la búsqueda de
+    empresas en LinkedIn con ese nombre: el operador lo encuentra en un clic."""
+    return 'https://www.linkedin.com/search/results/companies/?keywords=' + quote_plus(nombre_empresa or '')
+
+
 # ----------------------------------------------------------- todo junto
 
 CAMPOS_URL = ('sitio_web', 'linkedin_url', 'facebook_url', 'instagram_url')
@@ -271,6 +304,13 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True):
     descartados = {}
 
     pais = empresa.get('pais', '')
+
+    # Enlaces que llegaron como redirección de Google: se cambian por el real.
+    if usar_red:
+        for campo in CAMPOS_URL:
+            if es_redireccion(empresa.get(campo, '')):
+                empresa[campo] = resolver_redireccion(empresa[campo])
+
     for campo in ('telefono', 'whatsapp'):
         verificacion[campo] = verificar_telefono(empresa.get(campo, ''), pais)
 
@@ -313,6 +353,9 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True):
         not empresa.get('whatsapp') and tel and tel['estado'] != DESCARTADO and tel.get('es_movil')
     )
 
+    empresa['linkedin_busqueda'] = (
+        '' if empresa.get('linkedin_url') else enlace_busqueda_linkedin(empresa.get('nombre_empresa', ''))
+    )
     empresa['verificacion'] = verificacion
     empresa['descartados'] = descartados
     return empresa
