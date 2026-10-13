@@ -15,13 +15,19 @@ import re
 
 from django.conf import settings
 
+from . import verificacion
+
 MAXIMO_POR_DEFECTO = 5
 MAXIMO_TECHO = 5  # nunca se le pide más que esto a la IA, sin importar lo que pase el llamador
 
 REGLAS_COMUNES = """\
 Para cada empresa, busca también su página de LinkedIn, su Facebook y su \
-Instagram, además del correo, teléfono y sitio web — igual que buscarías el \
-resto de sus datos.
+Instagram, su número de WhatsApp (solo si la empresa lo publica como \
+WhatsApp, por ejemplo con un enlace wa.me), además del correo, teléfono y \
+sitio web — igual que buscarías el resto de sus datos.
+
+Busca en el idioma del país además de en español e inglés (por ejemplo, \
+en Indonesia usa términos en indonesio).
 
 LÍMITES DE BÚSQUEDA (obligatorios, para que esto sea rápido):
 - Devuelve COMO MÁXIMO {maximo} empresas. Ni una más, aunque encuentres candidatas \
@@ -33,7 +39,10 @@ y pasa de inmediato a la siguiente — no seguir insistiendo por ese dato.
 Reglas estrictas:
 - Solo incluye empresas que existan de verdad y que hayas podido confirmar \
 con la búsqueda. Nunca inventes ni "completes" un dato que no encontraste.
-- Si no encuentras el correo, teléfono, sitio web, LinkedIn, Facebook o \
+- Un teléfono, WhatsApp o correo SOLO va si lo viste escrito tal cual en \
+una página que consultaste. Cada dato será verificado automáticamente \
+después; los inventados se detectan y se descartan.
+- Si no encuentras el correo, teléfono, WhatsApp, sitio web, LinkedIn, Facebook o \
 Instagram de una empresa, deja ese campo como cadena vacía "" — NO lo \
 adivines ni generes uno con formato plausible.
 - Los enlaces de LinkedIn/Facebook/Instagram deben ser la URL real del \
@@ -54,6 +63,7 @@ debe ser "[" y la última "]".
     "sector": "...",
     "email": "...",
     "telefono": "...",
+    "whatsapp": "...",
     "sitio_web": "...",
     "linkedin_url": "...",
     "facebook_url": "...",
@@ -176,6 +186,7 @@ def _buscar_con_ia(prompt):
             'sector': str(item.get('sector', ''))[:120],
             'email': str(item.get('email', ''))[:254],
             'telefono': str(item.get('telefono', ''))[:30],
+            'whatsapp': str(item.get('whatsapp', ''))[:30],
             'sitio_web': str(item.get('sitio_web', ''))[:200],
             'linkedin_url': str(item.get('linkedin_url', ''))[:200],
             'facebook_url': str(item.get('facebook_url', ''))[:200],
@@ -195,4 +206,21 @@ def _buscar_con_ia(prompt):
     except (AttributeError, IndexError, TypeError):
         pass
 
+    # Texto de la respuesta que Gemini marcó como respaldado por alguna página
+    # real. Se usa para detectar teléfonos/correos que la IA "completó" sola.
+    texto_respaldado = ''
+    try:
+        metadata = response.candidates[0].grounding_metadata
+        if metadata and metadata.grounding_supports:
+            texto_respaldado = '\n'.join(
+                s.segment.text for s in metadata.grounding_supports
+                if s.segment and s.segment.text
+            )
+    except (AttributeError, IndexError, TypeError):
+        pass
+
+    # Capa de verificación: el prompt PIDE no inventar; aquí se COMPRUEBA.
+    empresas = verificacion.verificar_empresas(
+        empresas, texto_respaldado, usar_red=settings.VERIFICACION_RED,
+    )
     return empresas, fuentes

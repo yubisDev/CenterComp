@@ -1,0 +1,10 @@
+{% load icons verificacion_tags %}
+{% if empresa.email %}<div>{% icon 'mail' size=14 %} {{ empresa.email }} {% badge_verificacion empresa 'email' %}</div>{% endif %}
+{% if empresa.telefono %}<div>{% icon 'chat' size=14 %} {{ empresa.telefono }} {% badge_verificacion empresa 'telefono' %}{% if empresa.whatsapp_posible %} <span class="verif verif-pendiente" title="Es un número móvil válido; no se pudo confirmar que tenga WhatsApp">Posible WhatsApp</span>{% endif %}</div>{% endif %}
+{% if empresa.whatsapp %}<div>{% icon 'chat' size=14 %} WhatsApp {{ empresa.whatsapp }} {% badge_verificacion empresa 'whatsapp' %}</div>{% endif %}
+{% if empresa.sitio_web %}<div>{% icon 'link' size=14 %} {{ empresa.sitio_web }} {% badge_verificacion empresa 'sitio_web' %}</div>{% endif %}
+{% if empresa.linkedin_url %}<div>{% icon 'linkedin' size=14 %} <a href="{{ empresa.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a> {% badge_verificacion empresa 'linkedin_url' %}</div>{% endif %}
+{% if empresa.facebook_url %}<div>{% icon 'facebook' size=14 %} <a href="{{ empresa.facebook_url }}" target="_blank" rel="noopener">Facebook</a> {% badge_verificacion empresa 'facebook_url' %}</div>{% endif %}
+{% if empresa.instagram_url %}<div>{% icon 'instagram' size=14 %} <a href="{{ empresa.instagram_url }}" target="_blank" rel="noopener">Instagram</a> {% badge_verificacion empresa 'instagram_url' %}</div>{% endif %}
+{% if empresa.descartados %}<div class="verif-descartados small">Descartados por no existir:{% for campo, valor in empresa.descartados.items %} <s>{{ valor }}</s>{% endfor %}</div>{% endif %}
+{% if not empresa.email and not empresa.telefono and not empresa.whatsapp and not empresa.sitio_web and not empresa.linkedin_url and not empresa.facebook_url and not empresa.instagram_url %}<span class="text-muted-soft">Sin datos de contacto confiables</span>{% endif %}

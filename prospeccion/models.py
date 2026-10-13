@@ -73,6 +73,10 @@ class Comprador(models.Model):
         'Teléfono / WhatsApp', max_length=30, blank=True,
         help_text='Incluir indicativo de país, ej: +57 300 1234567',
     )
+    whatsapp = models.CharField(
+        'WhatsApp', max_length=30, blank=True,
+        help_text='Solo si es distinto del teléfono. Con indicativo, ej: +62 812 3456 7890',
+    )
     linkedin_url = models.URLField('LinkedIn', blank=True)
     facebook_url = models.URLField('Facebook', blank=True)
     instagram_url = models.URLField('Instagram', blank=True)
@@ -117,7 +121,7 @@ class Comprador(models.Model):
 
     @property
     def whatsapp_numero(self):
-        return ''.join(ch for ch in self.telefono if ch.isdigit())
+        return ''.join(ch for ch in (self.whatsapp or self.telefono) if ch.isdigit())
 
 
 class HistorialContacto(models.Model):
@@ -173,6 +177,10 @@ class Proveedor(models.Model):
         'Teléfono / WhatsApp', max_length=30, blank=True,
         help_text='Incluir indicativo de país, ej: +57 300 1234567',
     )
+    whatsapp = models.CharField(
+        'WhatsApp', max_length=30, blank=True,
+        help_text='Solo si es distinto del teléfono. Con indicativo, ej: +62 812 3456 7890',
+    )
     linkedin_url = models.URLField('LinkedIn', blank=True)
     facebook_url = models.URLField('Facebook', blank=True)
     instagram_url = models.URLField('Instagram', blank=True)
@@ -209,7 +217,7 @@ class Proveedor(models.Model):
 
     @property
     def whatsapp_numero(self):
-        return ''.join(ch for ch in self.telefono if ch.isdigit())
+        return ''.join(ch for ch in (self.whatsapp or self.telefono) if ch.isdigit())
 
 
 class HistorialContactoProveedor(models.Model):

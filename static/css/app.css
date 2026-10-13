@@ -853,3 +853,19 @@ table.table-modern.table-sm tbody td { padding: .42rem .75rem; }
   --bs-table-hover-color: var(--text-heading);
   --bs-table-border-color: var(--border-soft);
 }
+
+/* ---------- Verificación de datos encontrados por la IA ----------
+   Excepción consciente a la regla de "no semáforo": aquí el color sí
+   comunica confianza en un dato antes de contactar a alguien. */
+.verif {
+  display: inline-flex; align-items: center;
+  padding: .12rem .45rem; margin-left: .25rem;
+  border-radius: 999px; font-size: .68rem; font-weight: 650;
+  line-height: 1.2; white-space: nowrap; cursor: help; vertical-align: 1px;
+}
+.verif-ok        { background: var(--ok-100); color: var(--ok-deep); }
+.verif-dudoso    { background: #fdf0d2; color: #8a5a00; }
+.verif-pendiente { background: var(--bg-surface-sunken); color: var(--text-secondary); }
+.verif-descartados { color: var(--text-faint); margin-top: .2rem; }
+.verif-descartados s { margin-right: .3rem; }
+:root[data-theme="dark"] .verif-dudoso { background: #3a2f10; color: #e8c468; }

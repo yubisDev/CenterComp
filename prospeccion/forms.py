@@ -8,7 +8,7 @@ class CompradorForm(forms.ModelForm):
         model = Comprador
         fields = [
             'nombre_empresa', 'pais', 'ciudad', 'sector',
-            'email', 'telefono', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
+            'email', 'telefono', 'whatsapp', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
             'fuente', 'estado',
             'productos_interes', 'palabras_clave_interes', 'notas',
         ]
@@ -97,7 +97,7 @@ class ProveedorForm(forms.ModelForm):
         model = Proveedor
         fields = [
             'nombre_empresa', 'pais', 'ciudad', 'sector',
-            'email', 'telefono', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
+            'email', 'telefono', 'whatsapp', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
             'fuente', 'estado', 'notas',
         ]
         widgets = {

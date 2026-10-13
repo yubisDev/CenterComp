@@ -94,13 +94,7 @@ document.getElementById('formBuscarIA')?.addEventListener('submit', function (e)
                         <td class="text-muted-soft">{{ empresa.pais }}{% if empresa.ciudad %} · {{ empresa.ciudad }}{% endif %}{% if empresa.sector %}<br>{{ empresa.sector }}{% endif %}</td>
                         <td class="text-muted-soft small">{{ empresa.resumen|default:'—' }}</td>
                         <td>
-                            {% if empresa.email %}<div>{% icon 'mail' size=14 %} {{ empresa.email }}</div>{% endif %}
-                            {% if empresa.telefono %}<div>{% icon 'chat' size=14 %} {{ empresa.telefono }}</div>{% endif %}
-                            {% if empresa.sitio_web %}<div>{% icon 'link' size=14 %} {{ empresa.sitio_web }}</div>{% endif %}
-                            {% if empresa.linkedin_url %}<div>{% icon 'linkedin' size=14 %} <a href="{{ empresa.linkedin_url }}" target="_blank" rel="noopener">LinkedIn</a></div>{% endif %}
-                            {% if empresa.facebook_url %}<div>{% icon 'facebook' size=14 %} <a href="{{ empresa.facebook_url }}" target="_blank" rel="noopener">Facebook</a></div>{% endif %}
-                            {% if empresa.instagram_url %}<div>{% icon 'instagram' size=14 %} <a href="{{ empresa.instagram_url }}" target="_blank" rel="noopener">Instagram</a></div>{% endif %}
-                            {% if not empresa.email and not empresa.telefono and not empresa.sitio_web and not empresa.linkedin_url and not empresa.facebook_url and not empresa.instagram_url %}<span class="text-muted-soft">Sin datos de contacto</span>{% endif %}
+                            {% include 'prospeccion/parciales/contacto_ia.html' %}
                         </td>
                     </tr>
                 {% empty %}

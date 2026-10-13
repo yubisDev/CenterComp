@@ -142,6 +142,9 @@ LOGOUT_REDIRECT_URL = 'login'
 # Búsqueda de compradores con IA (Gemini + Google Search grounding)
 GEMINI_API_KEY = os.environ.get('GEMINI_API_KEY', '')
 BUSQUEDA_IA_LIMITE_DIARIO = int(os.environ.get('BUSQUEDA_IA_LIMITE_DIARIO', '20'))
+# Verificación de datos de la IA: consultas DNS y de "¿la página responde?".
+# Ponlo en 0 solo si el servidor no tiene salida a internet.
+VERIFICACION_RED = os.environ.get('VERIFICACION_RED', '1') == '1'
 
 # Correo saliente. Solo se considera configurado cuando hay host y
 # credenciales SMTP; el backend de consola no cuenta como un envío real.

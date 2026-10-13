@@ -586,6 +586,26 @@ def _procesar_importacion_productos(archivo):
 # su estado cada pocos segundos (ver compradores_buscar_ia_estado) hasta
 # que queda "listo" o "error".
 
+def _notas_verificacion(item):
+    """Resume en las notas del contacto qué datos de la IA quedaron dudosos o
+    se descartaron, para que el operador lo sepa antes de escribirles."""
+    nombres = {
+        'telefono': 'Teléfono', 'whatsapp': 'WhatsApp', 'email': 'Correo',
+        'sitio_web': 'Sitio web', 'linkedin_url': 'LinkedIn',
+        'facebook_url': 'Facebook', 'instagram_url': 'Instagram',
+    }
+    lineas = []
+    for campo, resultado in (item.get('verificacion') or {}).items():
+        if resultado.get('estado') == 'dudoso':
+            lineas.append(f"- {nombres.get(campo, campo)} dudoso: {resultado.get('motivo', '')}")
+    for campo, valor in (item.get('descartados') or {}).items():
+        lineas.append(f"- {nombres.get(campo, campo)} descartado ({valor}): "
+                      f"{(item.get('verificacion') or {}).get(campo, {}).get('motivo', '')}")
+    if item.get('whatsapp_posible'):
+        lineas.append('- El teléfono es móvil: posible WhatsApp (sin confirmar).')
+    return ('\n\nVerificación automática:\n' + '\n'.join(lineas)) if lineas else ''
+
+
 def _ejecutar_busqueda_en_segundo_plano(busqueda_id, consulta, funcion_busqueda=ia_busqueda.buscar_empresas):
     from django.db import connections
 
@@ -707,6 +727,7 @@ def compradores_buscar_ia_guardar(request):
         notas = 'Encontrado con búsqueda de IA — verificar antes de contactar.'
         if item.get('resumen'):
             notas += f"\n{item['resumen']}"
+        notas += _notas_verificacion(item)
 
         Comprador.objects.create(
             nombre_empresa=nombre_empresa,
@@ -715,6 +736,7 @@ def compradores_buscar_ia_guardar(request):
             sector=item.get('sector', ''),
             email=item.get('email', ''),
             telefono=item.get('telefono', ''),
+            whatsapp=item.get('whatsapp', ''),
             sitio_web=item.get('sitio_web', ''),
             linkedin_url=item.get('linkedin_url', ''),
             facebook_url=item.get('facebook_url', ''),
@@ -1017,6 +1039,7 @@ def proveedores_buscar_ia_guardar(request):
         notas = 'Encontrado con búsqueda de IA — verificar antes de contactar.'
         if item.get('resumen'):
             notas += f"\n{item['resumen']}"
+        notas += _notas_verificacion(item)
 
         Proveedor.objects.create(
             nombre_empresa=nombre_empresa,
@@ -1025,6 +1048,7 @@ def proveedores_buscar_ia_guardar(request):
             sector=item.get('sector', ''),
             email=item.get('email', ''),
             telefono=item.get('telefono', ''),
+            whatsapp=item.get('whatsapp', ''),
             sitio_web=item.get('sitio_web', ''),
             linkedin_url=item.get('linkedin_url', ''),
             facebook_url=item.get('facebook_url', ''),
