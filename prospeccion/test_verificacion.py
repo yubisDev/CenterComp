@@ -191,3 +191,33 @@ class LinkedInTests(SimpleTestCase):
         self.assertIn('linkedin.com/search/results/companies/?keywords=PT+Ejemplo+Pelapis', e['linkedin_busqueda'])
         html = render_to_string('prospeccion/parciales/contacto_ia.html', {'empresa': e})
         self.assertIn('Buscar en LinkedIn', html)
+
+
+class RedesInventadasTests(SimpleTestCase):
+    EMPRESA = dict(EmpresaTests.EMPRESA, linkedin_url='https://www.linkedin.com/company/pt-ejemplo-pelapis')
+
+    def _verificar(self, paginas):
+        with mock.patch.object(v, '_dominio_recibe_correo', return_value=True), \
+                mock.patch.object(v, '_pagina_responde', return_value=True):
+            return v.verificar_empresa(self.EMPRESA, paginas_consultadas=paginas)
+
+    def test_linkedin_que_google_no_devolvio_se_descarta(self):
+        e = self._verificar(['https://ejemplo.co.id/kontak', 'https://www.linkedin.com/company/otra-empresa'])
+        self.assertEqual(e['linkedin_url'], '')
+        self.assertIn('linkedin_url', e['descartados'])
+        self.assertIn('keywords=PT+Ejemplo+Pelapis', e['linkedin_busqueda'])
+
+    def test_linkedin_que_google_si_devolvio_se_verifica(self):
+        e = self._verificar(['https://id.linkedin.com/company/PT-Ejemplo-Pelapis/about/'])
+        self.assertEqual(e['linkedin_url'], 'https://www.linkedin.com/company/pt-ejemplo-pelapis')
+        self.assertEqual(e['verificacion']['linkedin_url']['estado'], v.VERIFICADO)
+
+    def test_sin_datos_de_paginas_no_se_juzga(self):
+        e = self._verificar(None)
+        self.assertEqual(e['verificacion']['linkedin_url']['estado'], v.SIN_VERIFICAR)
+
+    def test_resolver_fuentes(self):
+        respuesta = mock.Mock(headers={'Location': 'https://www.linkedin.com/company/x'})
+        with mock.patch.object(v.requests, 'head', return_value=respuesta):
+            reales = v.resolver_fuentes(['https://vertexaisearch.cloud.google.com/grounding-api-redirect/1'])
+        self.assertEqual(reales, ['https://www.linkedin.com/company/x'])

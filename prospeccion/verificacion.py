@@ -278,6 +278,32 @@ def resolver_redireccion(url):
     return ''
 
 
+def resolver_fuentes(urls):
+    """Convierte los enlaces de las páginas que consultó Gemini (que llegan como
+    redirecciones de Google) en las direcciones reales. Se hace en paralelo."""
+    urls = [u for u in (urls or []) if u]
+    if not urls:
+        return []
+    with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
+        return [u for u in pool.map(resolver_redireccion, urls) if u]
+
+
+def _clave_red(url):
+    """'https://id.linkedin.com/company/Pelapis-Nusantara/about/' ->
+    'linkedin.com/company/pelapis-nusantara'. Sirve para comparar enlaces de
+    redes sociales aunque cambie el subdominio, mayúsculas o subpáginas."""
+    if not url:
+        return ''
+    texto = url if '://' in url else 'https://' + url
+    host = (urlparse(texto).hostname or '').lower()
+    for red in ('linkedin.com', 'facebook.com', 'instagram.com'):
+        if host == red or host.endswith('.' + red):
+            partes = [p for p in urlparse(texto).path.lower().split('/') if p]
+            n = 2 if red == 'linkedin.com' else 1  # /company/<nombre>  o  /<nombre>
+            return red + '/' + '/'.join(partes[:n]) if len(partes) >= n else ''
+    return ''
+
+
 def enlace_busqueda_linkedin(nombre_empresa):
     """Cuando no se encontró el LinkedIn, un enlace que abre la búsqueda de
     empresas en LinkedIn con ese nombre: el operador lo encuentra en un clic."""
@@ -296,7 +322,7 @@ def _bajar_a_dudoso(resultado, motivo):
     return resultado
 
 
-def verificar_empresa(empresa, texto_respaldado='', usar_red=True):
+def verificar_empresa(empresa, texto_respaldado='', usar_red=True, paginas_consultadas=None):
     """Revisa todos los datos de contacto de una empresa. Devuelve una copia
     con los datos descartados vacíos y una clave 'verificacion' por campo."""
     empresa = dict(empresa)
@@ -323,6 +349,23 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True):
             verificacion['sitio_web'] = f_web.result()
         for campo in ('linkedin_url', 'facebook_url', 'instagram_url'):
             verificacion[campo] = verificar_url(empresa.get(campo, ''), campo)  # sin red, instantáneo
+
+        # LinkedIn, Facebook e Instagram bloquean las revisiones automáticas, así
+        # que no se puede preguntar si la página existe. La regla es otra: el
+        # enlace solo vale si es una de las páginas que Google le devolvió a la
+        # IA. Si no está entre ellas, la IA lo armó por su cuenta (inventado).
+        if paginas_consultadas is not None:
+            claves = {_clave_red(u) for u in paginas_consultadas} - {''}
+            for campo in ('linkedin_url', 'facebook_url', 'instagram_url'):
+                resultado = verificacion.get(campo)
+                if not resultado or resultado['estado'] == DESCARTADO:
+                    continue
+                if _clave_red(empresa.get(campo, '')) in claves:
+                    verificacion[campo] = _resultado(VERIFICADO, 'Es una de las páginas que encontró la búsqueda en Google')
+                else:
+                    verificacion[campo] = _resultado(
+                        DESCARTADO, 'No apareció en ninguna página que encontró la búsqueda: la IA lo armó por su cuenta',
+                    )
     else:
         if empresa.get('email'):
             ok = PATRON_EMAIL.match(empresa['email'].strip())
@@ -361,9 +404,11 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True):
     return empresa
 
 
-def verificar_empresas(empresas, texto_respaldado='', usar_red=True):
+def verificar_empresas(empresas, texto_respaldado='', usar_red=True, paginas_consultadas=None):
     """Verifica varias empresas en paralelo para no hacer esperar al operador."""
     if not empresas:
         return []
     with ThreadPoolExecutor(max_workers=min(5, len(empresas))) as pool:
-        return list(pool.map(lambda e: verificar_empresa(e, texto_respaldado, usar_red), empresas))
+        return list(pool.map(
+            lambda e: verificar_empresa(e, texto_respaldado, usar_red, paginas_consultadas), empresas,
+        ))

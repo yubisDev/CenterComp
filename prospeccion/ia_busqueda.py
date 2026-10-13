@@ -240,8 +240,14 @@ def _buscar_con_ia(prompt):
 
     # Capa de verificación: el prompt PIDE no inventar; aquí se COMPRUEBA.
     inicio = time.monotonic()
+    # Direcciones reales de las páginas que consultó Gemini: sirven para comprobar
+    # los enlaces de redes sociales y para mostrar fuentes legibles.
+    paginas = None
+    if settings.VERIFICACION_RED:
+        paginas = verificacion.resolver_fuentes([f['url'] for f in fuentes])
+
     empresas = verificacion.verificar_empresas(
-        empresas, texto_respaldado, usar_red=settings.VERIFICACION_RED,
+        empresas, texto_respaldado, usar_red=settings.VERIFICACION_RED, paginas_consultadas=paginas,
     )
     logger.info('Búsqueda IA: verificación de %d empresas en %.1f s',
                 len(empresas), time.monotonic() - inicio)
