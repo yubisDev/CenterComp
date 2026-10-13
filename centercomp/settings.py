@@ -152,6 +152,16 @@ GEMINI_NIVEL_RAZONAMIENTO = os.environ.get('GEMINI_NIVEL_RAZONAMIENTO', 'low')
 # resultado guardado: es instantáneo y no gasta saldo. 0 = desactivado.
 BUSQUEDA_IA_CACHE_DIAS = int(os.environ.get('BUSQUEDA_IA_CACHE_DIAS', '3'))
 
+# En redes corporativas que inspeccionan HTTPS, Python no conoce el certificado
+# de la empresa y fallan las conexiones (verificación, Telegram...). Si está
+# instalado `truststore` (pip install truststore), Python usa los certificados
+# del sistema operativo. En Render no hace falta y no está instalado.
+try:
+    import truststore
+    truststore.inject_into_ssl()
+except ImportError:
+    pass
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,

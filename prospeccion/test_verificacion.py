@@ -184,7 +184,7 @@ class LinkedInTests(SimpleTestCase):
             e = v.verificar_empresa(empresa)
         self.assertEqual(e['linkedin_url'], 'https://www.linkedin.com/company/pelapis-nusantara')
         self.assertEqual(e['verificacion']['linkedin_url']['estado'], v.SIN_VERIFICAR)
-        self.assertEqual(e['linkedin_busqueda'], '')
+        self.assertTrue(e['linkedin_busqueda'])  # no confirmado: se ofrece también la búsqueda
 
     def test_sin_linkedin_ofrece_enlace_de_busqueda(self):
         e = v.verificar_empresa(EmpresaTests.EMPRESA, usar_red=False)
@@ -201,10 +201,11 @@ class RedesInventadasTests(SimpleTestCase):
                 mock.patch.object(v, '_pagina_responde', return_value=True):
             return v.verificar_empresa(self.EMPRESA, paginas_consultadas=paginas)
 
-    def test_linkedin_que_google_no_devolvio_se_descarta(self):
+    def test_linkedin_que_google_no_cito_queda_dudoso_con_busqueda(self):
         e = self._verificar(['https://ejemplo.co.id/kontak', 'https://www.linkedin.com/company/otra-empresa'])
-        self.assertEqual(e['linkedin_url'], '')
-        self.assertIn('linkedin_url', e['descartados'])
+        self.assertEqual(e['linkedin_url'], 'https://www.linkedin.com/company/pt-ejemplo-pelapis')
+        self.assertEqual(e['verificacion']['linkedin_url']['estado'], v.DUDOSO)
+        self.assertNotIn('linkedin_url', e['descartados'])
         self.assertIn('keywords=PT+Ejemplo+Pelapis', e['linkedin_busqueda'])
 
     def test_linkedin_que_google_si_devolvio_se_verifica(self):
@@ -215,6 +216,10 @@ class RedesInventadasTests(SimpleTestCase):
     def test_sin_datos_de_paginas_no_se_juzga(self):
         e = self._verificar(None)
         self.assertEqual(e['verificacion']['linkedin_url']['estado'], v.SIN_VERIFICAR)
+
+    def test_si_la_red_no_deja_abrir_ninguna_fuente_no_se_juzga(self):
+        with mock.patch.object(v.requests, 'head', side_effect=v.requests.exceptions.SSLError('cert')):
+            self.assertIsNone(v.resolver_fuentes(['https://vertexaisearch.cloud.google.com/grounding-api-redirect/1']))
 
     def test_resolver_fuentes(self):
         respuesta = mock.Mock(headers={'Location': 'https://www.linkedin.com/company/x'})

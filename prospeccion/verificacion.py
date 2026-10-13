@@ -317,7 +317,11 @@ def resolver_fuentes(urls):
     if not urls:
         return []
     with ThreadPoolExecutor(max_workers=min(8, len(urls))) as pool:
-        return [u for u in pool.map(resolver_redireccion, urls) if u]
+        reales = [u for u in pool.map(resolver_redireccion, urls) if u]
+    # Si había páginas pero no se pudo abrir NINGUNA, el problema es la red
+    # (por ejemplo, una red corporativa que bloquea la conexión), no los datos:
+    # devolver None para que no se juzgue nada en vez de descartarlo todo.
+    return reales if reales else None
 
 
 def _clave_red(url):
@@ -395,8 +399,11 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True, paginas_consu
                 if _clave_red(empresa.get(campo, '')) in claves:
                     verificacion[campo] = _resultado(VERIFICADO, 'Es una de las páginas que encontró la búsqueda en Google')
                 else:
+                    # No se descarta: la IA pudo verlo en un resultado que Google no
+                    # citó como fuente. Pero tampoco se da por bueno: queda dudoso,
+                    # y el operador lo confirma en un clic.
                     verificacion[campo] = _resultado(
-                        DESCARTADO, 'No apareció en ninguna página que encontró la búsqueda: la IA lo armó por su cuenta',
+                        DUDOSO, 'No está entre las páginas que citó la búsqueda: ábrelo para confirmar que es de la empresa',
                     )
     else:
         if empresa.get('email'):
@@ -428,8 +435,11 @@ def verificar_empresa(empresa, texto_respaldado='', usar_red=True, paginas_consu
         not empresa.get('whatsapp') and tel and tel['estado'] != DESCARTADO and tel.get('es_movil')
     )
 
+    # Enlace de búsqueda en LinkedIn si no hay LinkedIn o si el que hay no está confirmado
+    estado_linkedin = (verificacion.get('linkedin_url') or {}).get('estado')
     empresa['linkedin_busqueda'] = (
-        '' if empresa.get('linkedin_url') else enlace_busqueda_linkedin(empresa.get('nombre_empresa', ''))
+        '' if empresa.get('linkedin_url') and estado_linkedin == VERIFICADO
+        else enlace_busqueda_linkedin(empresa.get('nombre_empresa', ''))
     )
     empresa['verificacion'] = verificacion
     empresa['descartados'] = descartados
