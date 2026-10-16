@@ -869,3 +869,10 @@ table.table-modern.table-sm tbody td { padding: .42rem .75rem; }
 .verif-descartados { color: var(--text-faint); margin-top: .2rem; }
 .verif-descartados s { margin-right: .3rem; }
 :root[data-theme="dark"] .verif-dudoso { background: #3a2f10; color: #e8c468; }
+
+/* Grupo de casillas (categorías de interés en el formulario de comprador) */
+.checkbox-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: .25rem 1rem;
+}

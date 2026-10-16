@@ -71,7 +71,7 @@ def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN
     if plantilla_email:
         asunto, cuerpo_email = plantilla_email.render(comprador, producto_nombre)
     else:
-        asunto = f'Oferta de producto para {comprador.nombre_empresa}'
+        asunto = f'Oferta de producto para {comprador.nombre_mostrar}'
         cuerpo_email = (
             f'Hola,\n\nNos gustaría ofrecerles nuestros productos disponibles en bodega'
             + (f' ({producto_nombre})' if producto_nombre else '')
@@ -84,7 +84,7 @@ def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN
         _, cuerpo_whatsapp = plantilla_wa.render(comprador, producto_nombre)
     else:
         cuerpo_whatsapp = (
-            f'Hola {comprador.nombre_empresa}, les escribimos para ofrecerles nuestros productos'
+            f'Hola {comprador.nombre_saludo}, le escribimos para ofrecerles nuestros productos'
             + (f' ({producto_nombre})' if producto_nombre else '')
             + '. ¿Les interesaría recibir más información?'
         )
@@ -259,7 +259,7 @@ def comprador_marcar_contactado(request, pk):
     next_url = _url_segura(request, request.POST.get('next'), reverse('compradores_lista'))
     if comprador.estado != Comprador.Estado.POR_CONTACTAR:
         # Ya avanzó en el embudo: no repetir el registro en el historial.
-        messages.info(request, f'{comprador.nombre_empresa} ya estaba en "{comprador.get_estado_display()}".')
+        messages.info(request, f'{comprador.nombre_mostrar} ya estaba en "{comprador.get_estado_display()}".')
         return redirect(next_url)
     comprador.fecha_ultimo_contacto = timezone.now()
     comprador.estado = Comprador.Estado.CONTACTADO
@@ -270,7 +270,7 @@ def comprador_marcar_contactado(request, pk):
         resultado='Marcado como contactado desde el listado.',
         usuario=request.user,
     )
-    messages.success(request, f'{comprador.nombre_empresa} marcado como contactado.')
+    messages.success(request, f'{comprador.nombre_mostrar} marcado como contactado.')
     return redirect(next_url)
 
 
@@ -1215,7 +1215,7 @@ def producto_detalle(request, pk):
         comprador = Comprador.objects.filter(pk=request.POST.get('comprador_id')).first()
         if comprador:
             producto.compradores_interesados.add(comprador)
-            messages.success(request, f'{comprador.nombre_empresa} se vinculó como interesado en este producto.')
+            messages.success(request, f'{comprador.nombre_mostrar} se vinculó como interesado en este producto.')
         return redirect('producto_detalle', pk=producto.pk)
 
     plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()

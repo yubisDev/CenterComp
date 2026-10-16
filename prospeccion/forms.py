@@ -1,32 +1,56 @@
 from django import forms
+from django.urls import reverse
+from django.utils.html import format_html
 
-from .models import Comprador, HistorialContacto, HistorialContactoProveedor, PlantillaMensaje, Producto, Proveedor
+from .models import CategoriaInteres, Comprador, HistorialContacto, HistorialContactoProveedor, PlantillaMensaje, Producto, Proveedor
 
 
 class CompradorForm(forms.ModelForm):
     class Meta:
         model = Comprador
         fields = [
-            'nombre_empresa', 'pais', 'ciudad', 'sector',
+            'nombre_contacto', 'nombre_empresa', 'pais', 'ciudad', 'sector',
             'email', 'telefono', 'whatsapp', 'linkedin_url', 'facebook_url', 'instagram_url', 'sitio_web',
-            'fuente', 'estado',
+            'fuente', 'campana', 'estado',
+            'categorias_interes', 'acepta_mensajes',
             'productos_interes', 'palabras_clave_interes', 'notas',
         ]
         widgets = {
             'notas': forms.Textarea(attrs={'rows': 4}),
             'productos_interes': forms.SelectMultiple(attrs={'size': 6}),
+            'categorias_interes': forms.CheckboxSelectMultiple,
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self.fields['categorias_interes'].queryset = CategoriaInteres.objects.filter(activa=True)
         for field in self.fields.values():
             css = field.widget.attrs.get('class', '')
-            if isinstance(field.widget, (forms.CheckboxInput,)):
+            if isinstance(field.widget, forms.CheckboxSelectMultiple):
+                field.widget.attrs['class'] = (css + ' form-check-input').strip()
+            elif isinstance(field.widget, (forms.CheckboxInput,)):
                 field.widget.attrs['class'] = (css + ' form-check-input').strip()
             elif isinstance(field.widget, forms.Select) or isinstance(field.widget, forms.SelectMultiple):
                 field.widget.attrs['class'] = (css + ' form-select').strip()
             else:
                 field.widget.attrs['class'] = (css + ' form-control').strip()
+
+    def clean(self):
+        datos = super().clean()
+        if not (datos.get('nombre_empresa') or '').strip() and not (datos.get('nombre_contacto') or '').strip():
+            raise forms.ValidationError('Escribe al menos el nombre de contacto o el de la empresa.')
+
+        numero = datos.get('telefono') or datos.get('whatsapp')
+        if numero:
+            from .normalizacion import normalizar_telefono
+            normalizado = normalizar_telefono(numero, datos.get('pais', ''))
+            otro = Comprador.objects.filter(telefono_normalizado=normalizado).exclude(pk=self.instance.pk).first()
+            if normalizado and otro:
+                self.add_error('telefono', format_html(
+                    'Este número ya está registrado en <a href="{}">{}</a>. Edita ese registro en lugar de crear otro.',
+                    reverse('comprador_detalle', args=[otro.pk]), otro.nombre_mostrar,
+                ))
+        return datos
 
 
 class ProductoForm(forms.ModelForm):

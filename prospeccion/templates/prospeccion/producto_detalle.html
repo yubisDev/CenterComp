@@ -68,7 +68,7 @@
                         <select name="comprador_id" class="form-select" required>
                             <option value="">Selecciona un comprador…</option>
                             {% for c in candidatos %}
-                                <option value="{{ c.pk }}">{{ c.nombre_empresa }} — {{ c.pais }}</option>
+                                <option value="{{ c.pk }}">{{ c.nombre_mostrar }} — {{ c.pais }}</option>
                             {% endfor %}
                         </select>
                     </div>
@@ -94,7 +94,7 @@
                     <tbody>
                     {% for comprador in interesados %}
                         <tr>
-                            <td><a class="row-link" href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_empresa }}</a></td>
+                            <td><a class="row-link" href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_mostrar }}</a></td>
                             <td class="text-muted-soft">{{ comprador.pais }}</td>
                             <td>
                                 {% if comprador.es_descartado %}
@@ -112,10 +112,10 @@
                             <td class="text-end">
                                 <div class="action-cluster">
                                     {% if comprador.email %}
-                                    <a class="icon-btn icon-btn-mail" href="{{ comprador.mailto_url }}" title="Enviar correo" aria-label="Enviar correo a {{ comprador.nombre_empresa }}">{% icon 'mail' %}</a>
+                                    <a class="icon-btn icon-btn-mail" href="{{ comprador.mailto_url }}" title="Enviar correo" aria-label="Enviar correo a {{ comprador.nombre_mostrar }}">{% icon 'mail' %}</a>
                                     {% endif %}
                                     {% if comprador.whatsapp_url %}
-                                    <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp" aria-label="Contactar a {{ comprador.nombre_empresa }} por WhatsApp">{% icon 'chat' %}</a>
+                                    <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp" aria-label="Contactar a {{ comprador.nombre_mostrar }} por WhatsApp">{% icon 'chat' %}</a>
                                     {% endif %}
                                 </div>
                             </td>
