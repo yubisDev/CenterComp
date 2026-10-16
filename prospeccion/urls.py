@@ -5,7 +5,9 @@ from . import views
 urlpatterns = [
     path('', views.compradores_lista, name='compradores_lista'),
     path('compradores/nuevo/', views.comprador_form, name='comprador_nuevo'),
+    path('compradores/exportar/', views.compradores_exportar, name='compradores_exportar'),
     path('compradores/importar/', views.compradores_importar, name='compradores_importar'),
+    path('compradores/importar/plantilla/', views.compradores_importar_plantilla, name='compradores_importar_plantilla'),
     path('compradores/buscar-ia/', views.compradores_buscar_ia, name='compradores_buscar_ia'),
     path('compradores/buscar-ia/ejecutar/', views.compradores_buscar_ia_ejecutar, name='compradores_buscar_ia_ejecutar'),
     path('compradores/buscar-ia/estado/<int:busqueda_id>/', views.compradores_buscar_ia_estado, name='compradores_buscar_ia_estado'),
@@ -36,6 +38,7 @@ urlpatterns = [
     path('productos/<int:pk>/editar/', views.producto_form, name='producto_editar'),
     path('productos/<int:pk>/eliminar/', views.producto_eliminar, name='producto_eliminar'),
 
+    path('compradores/campana-whatsapp/registrar/', views.compradores_campana_whatsapp_registrar, name='compradores_campana_whatsapp_registrar'),
     path('compradores/envio-masivo/', views.compradores_envio_masivo, name='compradores_envio_masivo'),
     path('compradores/envio-masivo/enviar/', views.compradores_envio_masivo_enviar, name='compradores_envio_masivo_enviar'),
 

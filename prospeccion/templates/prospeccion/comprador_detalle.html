@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 {% load icons %}
-{% block title %}{{ comprador.nombre_empresa }}{% endblock %}
-{% block page_title %}{{ comprador.nombre_empresa }}{% endblock %}
+{% block title %}{{ comprador.nombre_mostrar }}{% endblock %}
+{% block page_title %}{{ comprador.nombre_mostrar }}{% endblock %}
 {% block page_subtitle %}
-<div class="subtitle">{{ comprador.pais }}{% if comprador.ciudad %} · {{ comprador.ciudad }}{% endif %}{% if comprador.sector %} · {{ comprador.sector }}{% endif %}</div>
+<div class="subtitle">{% if comprador.nombre_empresa and comprador.nombre_contacto %}{{ comprador.nombre_contacto }} · {% endif %}{{ comprador.pais }}{% if comprador.ciudad %} · {{ comprador.ciudad }}{% endif %}{% if comprador.sector %} · {{ comprador.sector }}{% endif %}</div>
 {% endblock %}
 {% block content %}
 <div class="d-flex justify-content-end mb-3">
@@ -26,10 +26,10 @@
                         <span class="contact-value">{{ comprador.email }}</span>
                     </a>
                     {% endif %}
-                    {% if comprador.telefono %}
+                    {% if comprador.telefono or comprador.whatsapp %}
                     <a class="contact-row" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener">
                         <span class="icon-btn icon-btn-chat">{% icon 'chat' %}</span>
-                        <span class="contact-value">{{ comprador.telefono }}</span>
+                        <span class="contact-value">{{ comprador.whatsapp|default:comprador.telefono }}</span>
                     </a>
                     {% endif %}
                     {% if comprador.linkedin_url %}
@@ -56,11 +56,15 @@
                         <span class="contact-value">Sitio web</span>
                     </a>
                     {% endif %}
-                    {% if not comprador.email and not comprador.telefono and not comprador.linkedin_url and not comprador.facebook_url and not comprador.instagram_url and not comprador.sitio_web %}
+                    {% if not comprador.email and not comprador.telefono and not comprador.whatsapp and not comprador.linkedin_url and not comprador.facebook_url and not comprador.instagram_url and not comprador.sitio_web %}
                     <p class="text-muted-soft small mb-0">Sin datos de contacto todavía — <a href="{% url 'comprador_editar' comprador.pk %}">agrégalos aquí</a>.</p>
                     {% endif %}
                 </div>
-                <p class="mb-2"><span class="text-muted-soft">Fuente</span><br>{{ comprador.get_fuente_display }}</p>
+                <p class="mb-2"><span class="text-muted-soft">Origen</span><br>{{ comprador.get_fuente_display }}{% if comprador.campana %} · {{ comprador.campana }}{% endif %}</p>
+                <p class="mb-2"><span class="text-muted-soft">Le interesa</span><br>
+                    {% for cat in comprador.categorias_interes.all %}<span class="pill pill-muted me-1">{{ cat.nombre }}</span>{% empty %}—{% endfor %}
+                </p>
+                <p class="mb-2"><span class="text-muted-soft">Promociones</span><br>{% if comprador.acepta_mensajes %}Aceptó recibirlas{% if comprador.fecha_acepta %} ({{ comprador.fecha_acepta|date:'d/m/Y' }}){% endif %}{% else %}Sin autorización registrada{% endif %}</p>
                 <p class="mb-2"><span class="text-muted-soft">Estado</span><br>
                     {% if comprador.es_descartado %}
                     <span class="stage stage-dropped">

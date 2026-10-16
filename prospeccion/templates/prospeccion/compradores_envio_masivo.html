@@ -21,7 +21,7 @@
                     <label class="form-label d-block">Buscar</label>
                     <div class="search-field">
                         {% icon 'search' size=16 %}
-                        <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="Empresa, país o sector">
+                        <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="Nombre, empresa, teléfono o campaña">
                     </div>
                 </div>
                 <div class="row g-2">
@@ -51,6 +51,24 @@
                                 <option value="{{ s }}" {% if filtros.sector == s %}selected{% endif %}>{{ s }}</option>
                             {% endfor %}
                         </select>
+                    </div>
+                </div>
+
+                <div class="row g-2 mt-0">
+                    <div class="col-6">
+                        <label class="form-label d-block" for="categoriaInteres">Categoría de interés</label>
+                        <select id="categoriaInteres" name="categoria" class="form-select form-select-sm">
+                            <option value="">Todas</option>
+                            {% for c in categorias %}
+                                <option value="{{ c.pk }}" {% if filtros.categoria == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6 d-flex align-items-end">
+                        <div class="form-check mb-1">
+                            <input class="form-check-input" type="checkbox" name="acepta" value="1" id="soloAcepta" {% if filtros.acepta == '1' %}checked{% endif %}>
+                            <label class="form-check-label" for="soloAcepta">Solo quienes aceptan promociones</label>
+                        </div>
                     </div>
                 </div>
 
@@ -100,7 +118,9 @@
                 <div class="mt-3">
                     <span class="text-muted-soft small d-block mb-1">Variables que se reemplazan solas:</span>
                     <div class="d-flex flex-wrap gap-1">
+                        <span class="pill pill-muted">{ nombre }</span>
                         <span class="pill pill-muted">{ nombre_empresa }</span>
+                        <span class="pill pill-muted">{ categoria }</span>
                         <span class="pill pill-muted">{ pais }</span>
                         <span class="pill pill-muted">{ ciudad }</span>
                         <span class="pill pill-muted">{ sector }</span>
@@ -147,13 +167,13 @@
                 {% for comprador in destinatarios %}
                     <tr>
                         <td><input type="checkbox" class="form-check-input" name="compradores" value="{{ comprador.pk }}" checked></td>
-                        <td>{{ comprador.nombre_empresa }}</td>
+                        <td>{{ comprador.nombre_mostrar }}</td>
                         <td class="text-muted-soft">{{ comprador.pais }}</td>
                         <td class="text-muted-soft">{{ comprador.email }}</td>
                         <td class="text-muted-soft">{{ comprador.asunto_preview }}</td>
                         <td class="text-end">
                             {% if comprador.whatsapp_url %}
-                            <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Abrir conversación de WhatsApp" aria-label="Abrir WhatsApp con {{ comprador.nombre_empresa }}">{% icon 'chat' %}</a>
+                            <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Abrir conversación de WhatsApp" aria-label="Abrir WhatsApp con {{ comprador.nombre_mostrar }}">{% icon 'chat' %}</a>
                             {% else %}—{% endif %}
                         </td>
                     </tr>

@@ -1,6 +1,35 @@
 from django.conf import settings
 from django.db import models
 from django.urls import reverse
+from django.utils import timezone
+
+from .normalizacion import normalizar_pais, normalizar_telefono, pais_desde_telefono
+
+
+class CategoriaInteres(models.Model):
+    """Línea de negocio que le interesa a un lead (vehículos de subasta,
+    inmuebles, revestimientos...). Es un modelo y no una lista fija para que
+    se puedan agregar categorías nuevas desde el admin sin programar."""
+
+    nombre = models.CharField(max_length=100, unique=True)
+    palabras_clave = models.CharField(
+        max_length=400, blank=True,
+        help_text='Separadas por coma. Al importar, si la columna de interés contiene alguna de estas '
+                  'palabras, se asigna esta categoría. Ej: "carro, vehiculo, camioneta, moto".',
+    )
+    orden = models.PositiveSmallIntegerField(default=0)
+    activa = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['orden', 'nombre']
+        verbose_name = 'Categoría de interés'
+        verbose_name_plural = 'Categorías de interés'
+
+    def __str__(self):
+        return self.nombre
+
+    def lista_palabras(self):
+        return [p.strip() for p in self.palabras_clave.split(',') if p.strip()]
 
 
 class Producto(models.Model):
@@ -60,11 +89,22 @@ class Comprador(models.Model):
         IA = 'ia', 'Búsqueda con IA'
         FACEBOOK_ADS = 'facebook_ads', 'Facebook Ads'
         INSTAGRAM_ADS = 'instagram_ads', 'Instagram Ads'
+        META_ADS = 'meta_ads', 'Anuncio de Meta (formulario)'
+        WHATSAPP = 'whatsapp', 'WhatsApp'
+        INSTAGRAM = 'instagram', 'Instagram (mensaje directo)'
+        PAGINA_WEB = 'pagina_web', 'Página web'
         MANUAL = 'manual', 'Manual'
         OTRO = 'otro', 'Otro'
 
-    nombre_empresa = models.CharField(max_length=200)
-    pais = models.CharField(max_length=100)
+    nombre_empresa = models.CharField('Empresa', max_length=200, blank=True)
+    nombre_contacto = models.CharField(
+        'Nombre de contacto', max_length=150, blank=True,
+        help_text='Persona que escribió o con quien se habla. Se exige empresa o nombre de contacto.',
+    )
+    pais = models.CharField(
+        max_length=100, blank=True,
+        help_text='Si se deja vacío, se deduce del indicativo del teléfono.',
+    )
     ciudad = models.CharField(max_length=100, blank=True)
     sector = models.CharField(max_length=120, blank=True)
 
@@ -82,8 +122,27 @@ class Comprador(models.Model):
     instagram_url = models.URLField('Instagram', blank=True)
     sitio_web = models.URLField('Sitio web', blank=True)
 
+    telefono_normalizado = models.CharField(
+        max_length=20, blank=True, editable=False, db_index=True,
+        help_text='Número con indicativo y solo dígitos; se calcula solo. Sirve para detectar duplicados.',
+    )
+
     fuente = models.CharField(max_length=30, choices=Fuente.choices, default=Fuente.MANUAL)
+    campana = models.CharField(
+        'Campaña / anuncio', max_length=200, blank=True,
+        help_text='De qué anuncio o campaña llegó. Ej: "Revestimientos Panamá - septiembre".',
+    )
     estado = models.CharField(max_length=20, choices=Estado.choices, default=Estado.POR_CONTACTAR)
+
+    categorias_interes = models.ManyToManyField(
+        CategoriaInteres, blank=True, related_name='compradores', verbose_name='Categorías de interés',
+    )
+    acepta_mensajes = models.BooleanField(
+        'Acepta recibir promociones', default=False,
+        help_text='Marcar solo si la persona aceptó recibir mensajes promocionales (WhatsApp o correo). '
+                  'Meta lo exige para envíos masivos.',
+    )
+    fecha_acepta = models.DateTimeField(null=True, blank=True, editable=False)
 
     productos_interes = models.ManyToManyField(Producto, blank=True, related_name='compradores_interesados')
 
@@ -114,14 +173,40 @@ class Comprador(models.Model):
         ]
 
     def __str__(self):
-        return f'{self.nombre_empresa} ({self.pais})'
+        return f'{self.nombre_mostrar} ({self.pais})' if self.pais else self.nombre_mostrar
 
     def get_absolute_url(self):
         return reverse('comprador_detalle', args=[self.pk])
 
     @property
+    def nombre_mostrar(self):
+        """Empresa si la hay; si no, el nombre de la persona."""
+        return self.nombre_empresa or self.nombre_contacto or '(sin nombre)'
+
+    @property
+    def nombre_saludo(self):
+        """Para saludar en un mensaje: la persona si la conocemos, si no la empresa."""
+        return self.nombre_contacto or self.nombre_empresa
+
+    @property
     def whatsapp_numero(self):
-        return ''.join(ch for ch in (self.whatsapp or self.telefono) if ch.isdigit())
+        numero = self.whatsapp or self.telefono
+        return normalizar_telefono(numero, self.pais) if numero else ''
+
+    def save(self, *args, **kwargs):
+        self.pais = normalizar_pais(self.pais)
+        numero = self.telefono or self.whatsapp
+        self.telefono_normalizado = normalizar_telefono(numero, self.pais) if numero else ''
+        if not self.pais and numero:
+            self.pais = pais_desde_telefono(numero)
+        if self.acepta_mensajes and not self.fecha_acepta:
+            self.fecha_acepta = timezone.now()
+        elif not self.acepta_mensajes:
+            self.fecha_acepta = None
+        update_fields = kwargs.get('update_fields')
+        if update_fields is not None:
+            kwargs['update_fields'] = set(update_fields) | {'pais', 'telefono_normalizado', 'fecha_acepta'}
+        super().save(*args, **kwargs)
 
 
 class HistorialContacto(models.Model):
@@ -247,7 +332,8 @@ class PlantillaMensaje(models.Model):
     tipo = models.CharField(max_length=20, choices=Tipo.choices, default=Tipo.EMAIL)
     asunto = models.CharField(max_length=200, blank=True, help_text='Solo aplica para plantillas de correo')
     cuerpo = models.TextField(
-        help_text='Usa variables como {nombre_empresa} y {producto} para personalizar el mensaje',
+        help_text='Variables disponibles: {nombre} (persona o empresa), {nombre_empresa}, {categoria}, '
+                  '{producto}, {pais} y {ciudad}.',
     )
 
     class Meta:
@@ -261,8 +347,13 @@ class PlantillaMensaje(models.Model):
             def __missing__(self, key):
                 return ''
 
+        categorias = ''
+        if comprador.pk:
+            categorias = ', '.join(c.nombre for c in comprador.categorias_interes.all())
         contexto = _ContextoSeguro(
-            nombre_empresa=comprador.nombre_empresa,
+            nombre_empresa=comprador.nombre_empresa or comprador.nombre_contacto,
+            nombre=comprador.nombre_saludo,
+            categoria=categorias,
             pais=comprador.pais,
             ciudad=comprador.ciudad,
             sector=comprador.sector,

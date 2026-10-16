@@ -11,13 +11,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage, get_connection
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone, formats
 from django.views.decorators.http import require_POST
 
-from . import ia_busqueda
+from . import exportacion, ia_busqueda, importacion
 from .forms import (
     BusquedaIAForm,
     CompradorForm,
@@ -31,6 +31,7 @@ from .forms import (
 )
 from .models import (
     BusquedaIA,
+    CategoriaInteres,
     Comprador,
     HistorialContacto,
     HistorialContactoProveedor,
@@ -42,17 +43,6 @@ from .texto import titulo_inteligente
 
 _SIN_CARGAR = object()  # centinela: "no me pasaron la plantilla, búscala tú" (distinto de None = "ya sé que no hay")
 
-FUENTE_ALIASES = {
-    'hunter': Comprador.Fuente.HUNTER,
-    'hunter.io': Comprador.Fuente.HUNTER,
-    'apollo': Comprador.Fuente.APOLLO,
-    'procolombia': Comprador.Fuente.PROCOLOMBIA,
-    'camara de comercio': Comprador.Fuente.CAMARA_COMERCIO,
-    'cámara de comercio': Comprador.Fuente.CAMARA_COMERCIO,
-    'linkedin': Comprador.Fuente.LINKEDIN,
-    'linkedin sales navigator': Comprador.Fuente.LINKEDIN,
-    'manual': Comprador.Fuente.MANUAL,
-}
 
 
 def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN_CARGAR):
@@ -71,7 +61,7 @@ def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN
     if plantilla_email:
         asunto, cuerpo_email = plantilla_email.render(comprador, producto_nombre)
     else:
-        asunto = f'Oferta de producto para {comprador.nombre_empresa}'
+        asunto = f'Oferta de producto para {comprador.nombre_mostrar}'
         cuerpo_email = (
             f'Hola,\n\nNos gustaría ofrecerles nuestros productos disponibles en bodega'
             + (f' ({producto_nombre})' if producto_nombre else '')
@@ -84,7 +74,7 @@ def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN
         _, cuerpo_whatsapp = plantilla_wa.render(comprador, producto_nombre)
     else:
         cuerpo_whatsapp = (
-            f'Hola {comprador.nombre_empresa}, les escribimos para ofrecerles nuestros productos'
+            f'Hola {comprador.nombre_saludo}, le escribimos para ofrecerles nuestros productos'
             + (f' ({producto_nombre})' if producto_nombre else '')
             + '. ¿Les interesaría recibir más información?'
         )
@@ -93,18 +83,26 @@ def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN
 
 
 def _aplicar_filtros_comprador(qs, params):
-    """Aplica al queryset los mismos filtros de búsqueda (q/estado/pais/sector/fuente)
-    usados tanto en el listado de compradores como en el envío masivo."""
+    """Aplica al queryset los filtros de búsqueda usados en el listado de
+    compradores, el envío masivo, la exportación y la campaña de WhatsApp."""
     q = params.get('q', '').strip()
     estado = params.get('estado', '')
     pais = params.get('pais', '')
     sector = params.get('sector', '')
     fuente = params.get('fuente', '')
+    categoria = params.get('categoria', '').strip()
+    campana = params.get('campana', '')
+    acepta = params.get('acepta', '')
 
     if q:
-        qs = qs.filter(
-            Q(nombre_empresa__icontains=q) | Q(pais__icontains=q) | Q(sector__icontains=q)
+        filtro = (
+            Q(nombre_empresa__icontains=q) | Q(nombre_contacto__icontains=q) | Q(pais__icontains=q)
+            | Q(sector__icontains=q) | Q(email__icontains=q) | Q(campana__icontains=q)
         )
+        digitos = ''.join(ch for ch in q if ch.isdigit())
+        if len(digitos) >= 4:
+            filtro |= Q(telefono_normalizado__contains=digitos)
+        qs = qs.filter(filtro)
     if estado:
         qs = qs.filter(estado=estado)
     if pais:
@@ -113,9 +111,32 @@ def _aplicar_filtros_comprador(qs, params):
         qs = qs.filter(sector=sector)
     if fuente:
         qs = qs.filter(fuente=fuente)
+    if categoria == 'sin':
+        qs = qs.filter(categorias_interes__isnull=True)
+    elif categoria.isdecimal():
+        qs = qs.filter(categorias_interes=categoria)
+    if campana:
+        qs = qs.filter(campana=campana)
+    if acepta == '1':
+        qs = qs.filter(acepta_mensajes=True)
 
-    filtros = {'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente}
+    filtros = {
+        'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente,
+        'categoria': categoria, 'campana': campana, 'acepta': acepta,
+    }
     return qs, filtros
+
+
+def _opciones_filtro_comprador():
+    """Listas para llenar los selectores de filtro."""
+    return {
+        'estados': Comprador.Estado.choices,
+        'fuentes': Comprador.Fuente.choices,
+        'paises': Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais'),
+        'sectores': Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector'),
+        'categorias': CategoriaInteres.objects.filter(activa=True),
+        'campanas': Comprador.objects.exclude(campana='').values_list('campana', flat=True).distinct().order_by('campana'),
+    }
 
 
 ETAPA_INDICE = {
@@ -139,18 +160,45 @@ def _enriquecer(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN_CARGAR
 
 @login_required
 def compradores_lista(request):
-    qs = Comprador.objects.prefetch_related('productos_interes')
+    qs = Comprador.objects.prefetch_related('productos_interes', 'categorias_interes')
     qs, filtros = _aplicar_filtros_comprador(qs, request.GET)
+    qs = qs.distinct()
+    total_filtrados = qs.count()
 
-    paginator = Paginator(qs, 20)
+    # Campaña de WhatsApp: al elegir una plantilla en los filtros, cada fila
+    # abre WhatsApp con ese mensaje y permite marcar el envío.
+    plantillas_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP)
+    plantilla_wa_id = request.GET.get('plantilla_wa', '')
+    plantilla_campana = plantillas_wa.filter(pk=plantilla_wa_id).first() if plantilla_wa_id.isdecimal() else None
+
+    paginator = Paginator(qs, 50 if plantilla_campana else 20)
     page_obj = paginator.get_page(request.GET.get('page'))
     plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
-    plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
+    plantilla_wa = plantilla_campana or plantillas_wa.first()
     for comprador in page_obj.object_list:
         _enriquecer(comprador, plantilla_email, plantilla_wa)
 
-    paises = Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais')
-    sectores = Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector')
+    campana = None
+    if plantilla_campana:
+        marca = _marca_campana_whatsapp(plantilla_campana)
+        con_whatsapp = qs.exclude(telefono_normalizado='')
+        enviados_ids = set(
+            HistorialContacto.objects.filter(resultado=marca, comprador__in=con_whatsapp)
+            .values_list('comprador_id', flat=True)
+        )
+        vista_previa = plantilla_campana.cuerpo
+        for comprador in page_obj.object_list:
+            comprador.ya_enviado = comprador.pk in enviados_ids
+        primero = next((c for c in page_obj.object_list if c.whatsapp_numero), None)
+        if primero:
+            _, vista_previa = plantilla_campana.render(primero)
+        campana = {
+            'plantilla': plantilla_campana,
+            'con_whatsapp': con_whatsapp.count(),
+            'enviados': len(enviados_ids),
+            'sin_autorizacion': con_whatsapp.filter(acepta_mensajes=False).count(),
+            'vista_previa': vista_previa,
+        }
 
     querystring = request.GET.copy()
     querystring.pop('page', None)
@@ -175,19 +223,69 @@ def compradores_lista(request):
             'activo': filtros['estado'] == valor,
         })
 
+    hay_filtros_extra = any(filtros[k] for k in ('sector', 'categoria', 'campana', 'acepta')) or bool(plantilla_campana)
     context = {
         'page_obj': page_obj,
-        'estados': Comprador.Estado.choices,
-        'fuentes': Comprador.Fuente.choices,
-        'paises': paises,
-        'sectores': sectores,
         'filtros': filtros,
         'querystring': querystring.urlencode(),
         'querystring_sin_estado': querystring_sin_estado.urlencode(),
         'total_compradores': total,
+        'total_filtrados': total_filtrados,
         'embudo': embudo,
+        'resumen_base': _resumen_base(todos) if total else None,
+        'hay_filtros_extra': hay_filtros_extra,
+        'plantillas_wa': plantillas_wa,
+        'plantilla_wa_id': plantilla_wa_id,
+        'campana': campana,
+        'texto_sugerido': TEXTO_SUGERIDO_REVESTIMIENTOS,
+        **_opciones_filtro_comprador(),
     }
     return render(request, 'prospeccion/compradores_lista.html', context)
+
+
+def _resumen_base(qs):
+    """Cuántos leads hay por categoría de interés, por país y por origen."""
+    sin_categoria = qs.filter(categorias_interes__isnull=True).count()
+    por_categoria = list(
+        CategoriaInteres.objects.filter(activa=True)
+        .annotate(cantidad=Count('compradores'))
+        .values('pk', 'nombre', 'cantidad')
+    )
+    por_pais = list(qs.exclude(pais='').values('pais').annotate(cantidad=Count('pk')).order_by('-cantidad')[:6])
+    etiquetas_fuente = dict(Comprador.Fuente.choices)
+    por_fuente = [
+        {'fuente': f['fuente'], 'etiqueta': etiquetas_fuente.get(f['fuente'], f['fuente']), 'cantidad': f['cantidad']}
+        for f in qs.values('fuente').annotate(cantidad=Count('pk')).order_by('-cantidad')[:6]
+    ]
+    return {
+        'por_categoria': por_categoria,
+        'sin_categoria': sin_categoria,
+        'por_pais': por_pais,
+        'por_fuente': por_fuente,
+    }
+
+
+@login_required
+def compradores_exportar(request):
+    formato = request.GET.get('formato', 'xlsx')
+    qs = Comprador.objects.prefetch_related('categorias_interes')
+    qs, _ = _aplicar_filtros_comprador(qs, request.GET)
+    qs = qs.distinct().order_by('-creado_en')
+
+    fecha = timezone.localdate().strftime('%Y-%m-%d')
+    if formato == 'whatsapp':
+        contenido = exportacion.a_csv(exportacion.filas_whatsapp(qs))
+        tipo, nombre = 'text/csv; charset=utf-8', f'whatsapp_{fecha}.csv'
+    elif formato == 'csv':
+        contenido = exportacion.a_csv(exportacion.filas_completas(qs))
+        tipo, nombre = 'text/csv; charset=utf-8', f'leads_{fecha}.csv'
+    else:
+        contenido = exportacion.a_excel(exportacion.filas_completas(qs))
+        tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        nombre = f'leads_{fecha}.xlsx'
+    respuesta = HttpResponse(contenido, content_type=tipo)
+    respuesta['Content-Disposition'] = f'attachment; filename="{nombre}"'
+    return respuesta
 
 
 @login_required
@@ -259,7 +357,7 @@ def comprador_marcar_contactado(request, pk):
     next_url = _url_segura(request, request.POST.get('next'), reverse('compradores_lista'))
     if comprador.estado != Comprador.Estado.POR_CONTACTAR:
         # Ya avanzó en el embudo: no repetir el registro en el historial.
-        messages.info(request, f'{comprador.nombre_empresa} ya estaba en "{comprador.get_estado_display()}".')
+        messages.info(request, f'{comprador.nombre_mostrar} ya estaba en "{comprador.get_estado_display()}".')
         return redirect(next_url)
     comprador.fecha_ultimo_contacto = timezone.now()
     comprador.estado = Comprador.Estado.CONTACTADO
@@ -270,7 +368,7 @@ def comprador_marcar_contactado(request, pk):
         resultado='Marcado como contactado desde el listado.',
         usuario=request.user,
     )
-    messages.success(request, f'{comprador.nombre_empresa} marcado como contactado.')
+    messages.success(request, f'{comprador.nombre_mostrar} marcado como contactado.')
     return redirect(next_url)
 
 
@@ -287,7 +385,9 @@ def compradores_envio_masivo(request):
             raise Http404('Producto no válido.')
         producto_interes = get_object_or_404(Producto, pk=producto_id)
         qs = qs.filter(productos_interes=producto_interes)
-    qs = qs.exclude(email='').order_by('nombre_empresa').prefetch_related('productos_interes')
+    qs = qs.exclude(email='').distinct().order_by('nombre_empresa', 'nombre_contacto').prefetch_related(
+        'productos_interes', 'categorias_interes',
+    )
     total_filtrados = qs.count()
     destinatarios = list(qs[:ENVIO_MASIVO_LIMITE])
 
@@ -314,10 +414,7 @@ def compradores_envio_masivo(request):
         'total_filtrados': total_filtrados,
         'limite': ENVIO_MASIVO_LIMITE,
         'plantilla': plantilla,
-        'estados': Comprador.Estado.choices,
-        'fuentes': Comprador.Fuente.choices,
-        'paises': Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais'),
-        'sectores': Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector'),
+        **_opciones_filtro_comprador(),
         'filtros': filtros,
         'plantillas': PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL),
         'plantilla_id': plantilla_id,
@@ -394,17 +491,66 @@ def compradores_envio_masivo_enviar(request):
     return redirect('compradores_lista')
 
 
+TEXTO_SUGERIDO_REVESTIMIENTOS = (
+    'Hola {nombre} 👋, te escribimos de ISYN.\n\n'
+    'Tenemos excedentes de revestimientos para construcción en Panamá con *40% de descuento* '
+    'por tiempo limitado.\n\n'
+    '¿Te comparto el catálogo con referencias y precios?'
+)
+
+
+def _marca_campana_whatsapp(plantilla):
+    return f'Campaña WhatsApp — plantilla "{plantilla.nombre}"'
+
+
+@login_required
+@require_POST
+def compradores_campana_whatsapp_registrar(request):
+    """Registra en el historial que se le envió el mensaje de la campaña a un contacto."""
+    comprador = get_object_or_404(Comprador, pk=request.POST.get('comprador_id'))
+    plantilla = get_object_or_404(
+        PlantillaMensaje, pk=request.POST.get('plantilla_id'), tipo=PlantillaMensaje.Tipo.WHATSAPP,
+    )
+    marca = _marca_campana_whatsapp(plantilla)
+    creado = False
+    if not HistorialContacto.objects.filter(comprador=comprador, resultado=marca).exists():
+        HistorialContacto.objects.create(
+            comprador=comprador, medio=HistorialContacto.Medio.WHATSAPP, resultado=marca, usuario=request.user,
+        )
+        comprador.fecha_ultimo_contacto = timezone.now()
+        if comprador.estado == Comprador.Estado.POR_CONTACTAR:
+            comprador.estado = Comprador.Estado.CONTACTADO
+        comprador.save()
+        creado = True
+
+    if request.headers.get('x-requested-with') == 'fetch':
+        return JsonResponse({'ok': True, 'creado': creado})
+    messages.success(request, f'Envío a {comprador.nombre_mostrar} registrado.')
+    destino = _url_segura(request, request.POST.get('next'), reverse('compradores_lista'))
+    return redirect(destino)
+
+
 @login_required
 def compradores_importar(request):
     resumen = None
     if request.method == 'POST':
         form = ImportarCompradoresForm(request.POST, request.FILES)
         if form.is_valid():
-            resumen = _procesar_importacion(form.cleaned_data['archivo'])
+            datos = form.cleaned_data
+            resumen = importacion.procesar_importacion(
+                datos['archivo'],
+                fuente_defecto=datos['fuente'],
+                campana_defecto=datos['campana'],
+                categorias_defecto=datos['categorias'],
+                acepta_defecto=datos['acepta_mensajes'],
+            )
+            total = resumen['creados'] + resumen['actualizados']
             if resumen['errores']:
-                messages.warning(request, f"Importación completada con {len(resumen['errores'])} error(es).")
+                messages.warning(request, f"Importación terminada con {len(resumen['errores'])} fila(s) con problemas.")
+            elif total:
+                messages.success(request, f"Importación lista: {resumen['creados']} nuevos y {resumen['actualizados']} actualizados.")
             else:
-                messages.success(request, f"Se importaron {resumen['creados']} compradores nuevos.")
+                messages.info(request, 'No había datos nuevos en el archivo.')
     else:
         form = ImportarCompradoresForm()
     return render(request, 'prospeccion/compradores_importar.html', {
@@ -414,77 +560,22 @@ def compradores_importar(request):
     })
 
 
-IMPORTACION_TAMANO_MAXIMO = 10 * 1024 * 1024  # 10 MB
+@login_required
+def compradores_importar_plantilla(request):
+    respuesta = HttpResponse(
+        importacion.construir_plantilla_excel(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    respuesta['Content-Disposition'] = 'attachment; filename="plantilla_leads.xlsx"'
+    return respuesta
 
 
-def _procesar_importacion(archivo):
-    nombre = archivo.name.lower()
-    filas = []
-    errores = []
+IMPORTACION_TAMANO_MAXIMO = importacion.TAMANO_MAXIMO
 
-    if archivo.size > IMPORTACION_TAMANO_MAXIMO:
-        return {'creados': 0, 'errores': ['El archivo supera el tamaño máximo permitido (10 MB).']}
 
-    if nombre.endswith('.csv'):
-        contenido = archivo.read().decode('utf-8-sig', errors='replace')
-        lector = csv.DictReader(io.StringIO(contenido))
-        for fila in lector:
-            filas.append({(k or '').strip().lower(): (v or '').strip() for k, v in fila.items()})
-    elif nombre.endswith('.xlsx') or nombre.endswith('.xls'):
-        import openpyxl
-
-        wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
-        ws = wb.active
-        filas_iter = ws.iter_rows(values_only=True)
-        encabezados = [str(h).strip().lower() if h else '' for h in next(filas_iter)]
-        for fila in filas_iter:
-            valores = {}
-            for header, valor in zip(encabezados, fila):
-                if header:
-                    valores[header] = str(valor).strip() if valor is not None else ''
-            if any(valores.values()):
-                filas.append(valores)
-    else:
-        return {'creados': 0, 'errores': ['Formato de archivo no soportado. Usa CSV o Excel (.xlsx).']}
-
-    creados = 0
-    for i, fila in enumerate(filas, start=2):
-        nombre_empresa = fila.get('nombre_empresa') or fila.get('empresa') or ''
-        if not nombre_empresa:
-            errores.append(f'Fila {i}: falta nombre_empresa, se omitió.')
-            continue
-        nombre_empresa = titulo_inteligente(nombre_empresa)
-
-        fuente_raw = (fila.get('fuente') or '').strip().lower()
-        fuente = FUENTE_ALIASES.get(fuente_raw, Comprador.Fuente.MANUAL)
-
-        email = fila.get('email') or fila.get('correo') or ''
-        existente = None
-        if email:
-            existente = Comprador.objects.filter(nombre_empresa__iexact=nombre_empresa, email__iexact=email).first()
-        if existente:
-            errores.append(f'Fila {i}: "{nombre_empresa}" ya existe, se omitió.')
-            continue
-
-        Comprador.objects.create(
-            nombre_empresa=nombre_empresa,
-            pais=fila.get('pais') or fila.get('país') or '',
-            ciudad=fila.get('ciudad') or '',
-            sector=fila.get('sector') or fila.get('industria') or '',
-            email=email,
-            telefono=fila.get('telefono') or fila.get('teléfono') or fila.get('whatsapp') or '',
-            linkedin_url=fila.get('linkedin') or '',
-            facebook_url=fila.get('facebook') or '',
-            instagram_url=fila.get('instagram') or '',
-            sitio_web=fila.get('sitio_web') or fila.get('web') or fila.get('website') or '',
-            fuente=fuente,
-            palabras_clave_interes=(
-                fila.get('palabras_clave') or fila.get('palabras_clave_interes') or fila.get('intereses') or ''
-            )[:300],
-        )
-        creados += 1
-
-    return {'creados': creados, 'errores': errores}
+def _procesar_importacion(archivo, **opciones):
+    """Se mantiene por compatibilidad; la lógica vive en importacion.py."""
+    return importacion.procesar_importacion(archivo, **opciones)
 
 
 @login_required
@@ -1215,7 +1306,7 @@ def producto_detalle(request, pk):
         comprador = Comprador.objects.filter(pk=request.POST.get('comprador_id')).first()
         if comprador:
             producto.compradores_interesados.add(comprador)
-            messages.success(request, f'{comprador.nombre_empresa} se vinculó como interesado en este producto.')
+            messages.success(request, f'{comprador.nombre_mostrar} se vinculó como interesado en este producto.')
         return redirect('producto_detalle', pk=producto.pk)
 
     plantilla_email = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL).first()
@@ -1277,7 +1368,11 @@ def plantilla_form(request, pk=None):
             messages.success(request, 'Plantilla guardada correctamente.')
             return redirect('plantillas_lista')
     else:
-        form = PlantillaMensajeForm(instance=plantilla)
+        inicial = {}
+        if not plantilla:
+            # Permite abrir el formulario con un texto sugerido (ej. desde la campaña de WhatsApp).
+            inicial = {k: request.GET[k] for k in ('nombre', 'tipo', 'cuerpo') if request.GET.get(k)}
+        form = PlantillaMensajeForm(instance=plantilla, initial=inicial)
     return render(request, 'prospeccion/plantilla_form.html', {'form': form, 'plantilla': plantilla})
 
 

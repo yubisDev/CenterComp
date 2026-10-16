@@ -2,6 +2,7 @@ from django.contrib import admin
 
 from .models import (
     BusquedaIA,
+    CategoriaInteres,
     Comprador,
     HistorialContacto,
     HistorialContactoProveedor,
@@ -23,12 +24,21 @@ class HistorialContactoProveedorInline(admin.TabularInline):
     readonly_fields = ['fecha']
 
 
+@admin.register(CategoriaInteres)
+class CategoriaInteresAdmin(admin.ModelAdmin):
+    list_display = ['nombre', 'palabras_clave', 'orden', 'activa']
+    list_editable = ['orden', 'activa']
+
+
 @admin.register(Comprador)
 class CompradorAdmin(admin.ModelAdmin):
-    list_display = ['nombre_empresa', 'pais', 'ciudad', 'sector', 'estado', 'fuente', 'fecha_ultimo_contacto']
-    list_filter = ['estado', 'pais', 'sector', 'fuente']
-    search_fields = ['nombre_empresa', 'pais', 'sector', 'email', 'telefono']
-    filter_horizontal = ['productos_interes']
+    list_display = [
+        'nombre_empresa', 'nombre_contacto', 'pais', 'ciudad', 'estado', 'fuente', 'campana',
+        'acepta_mensajes', 'fecha_ultimo_contacto',
+    ]
+    list_filter = ['estado', 'pais', 'fuente', 'categorias_interes', 'acepta_mensajes']
+    search_fields = ['nombre_empresa', 'nombre_contacto', 'pais', 'sector', 'email', 'telefono', 'telefono_normalizado', 'campana']
+    filter_horizontal = ['productos_interes', 'categorias_interes']
     inlines = [HistorialContactoInline]
 
 

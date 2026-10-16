@@ -1,14 +1,26 @@
 {% extends 'base.html' %}
 {% load icons humanize_extra %}
-{% block title %}Compradores{% endblock %}
-{% block page_title %}Compradores potenciales{% endblock %}
+{% block title %}Compradores y leads{% endblock %}
+{% block page_title %}Compradores y leads{% endblock %}
 {% block page_subtitle %}
 <div class="subtitle">{{ total_compradores }} prospecto{{ total_compradores|pluralize }} en tu pipeline</div>
 {% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-end mb-3">
-    <a href="{% url 'comprador_nuevo' %}" class="btn btn-primary">+ Nuevo comprador</a>
+<div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+    <a href="{% url 'compradores_importar' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">{% icon 'upload' size=15 %} Importar</a>
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {% icon 'download' size=15 %} Exportar{% if total_filtrados != total_compradores %} ({{ total_filtrados }}){% endif %}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'compradores_exportar' %}?formato=xlsx{% if querystring %}&{{ querystring }}{% endif %}">Excel (.xlsx)</a></li>
+            <li><a class="dropdown-item" href="{% url 'compradores_exportar' %}?formato=csv{% if querystring %}&{{ querystring }}{% endif %}">CSV</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'compradores_exportar' %}?formato=whatsapp{% if querystring %}&{{ querystring }}{% endif %}">Lista para WhatsApp (nombre + número)</a></li>
+        </ul>
+    </div>
+    <a href="{% url 'comprador_nuevo' %}" class="btn btn-primary">+ Nuevo lead</a>
 </div>
 
 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2 mb-3">
@@ -26,13 +38,42 @@
 <div class="mb-3"><a href="?{{ querystring_sin_estado }}" class="text-muted-soft small">Ver todos los estados</a></div>
 {% endif %}
 
+{% if resumen_base %}
+<details class="panel resumen-base mb-3"{% if not filtros.q and not filtros.estado and not hay_filtros_extra and not filtros.pais and not filtros.fuente %} open{% endif %}>
+    <summary class="panel-body py-2"><strong>Resumen de la base</strong> <span class="text-muted-soft small">· clic en un dato para filtrar</span></summary>
+    <div class="panel-body pt-0">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="resumen-titulo">Le interesa</div>
+                {% for c in resumen_base.por_categoria %}
+                <a class="resumen-fila" href="?categoria={{ c.pk }}"><span>{{ c.nombre }}</span><strong>{{ c.cantidad }}</strong></a>
+                {% endfor %}
+                <a class="resumen-fila text-muted-soft" href="?categoria=sin"><span>Sin categoría</span><strong>{{ resumen_base.sin_categoria }}</strong></a>
+            </div>
+            <div class="col-md-4">
+                <div class="resumen-titulo">País</div>
+                {% for p in resumen_base.por_pais %}
+                <a class="resumen-fila" href="?pais={{ p.pais|urlencode }}"><span>{{ p.pais }}</span><strong>{{ p.cantidad }}</strong></a>
+                {% empty %}<p class="text-muted-soft small mb-0">Sin datos</p>{% endfor %}
+            </div>
+            <div class="col-md-4">
+                <div class="resumen-titulo">Origen</div>
+                {% for f in resumen_base.por_fuente %}
+                <a class="resumen-fila" href="?fuente={{ f.fuente }}"><span>{{ f.etiqueta }}</span><strong>{{ f.cantidad }}</strong></a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</details>
+{% endif %}
+
 <form method="get" class="filter-bar">
     <div class="row g-2 align-items-end">
         <div class="col-md-4">
             <label class="form-label d-block">Buscar</label>
             <div class="search-field">
                 {% icon 'search' size=16 %}
-                <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="Empresa, país o sector">
+                <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="Nombre, empresa, teléfono, correo o campaña">
             </div>
         </div>
         <div class="col-md-2">
@@ -72,52 +113,137 @@
             </select>
         </div>
     </div>
-    <div class="mt-2">
+    <div class="row g-2 align-items-end mt-0">
+        <div class="col-md-3">
+            <label class="form-label d-block">Categoría de interés</label>
+            <select name="categoria" class="form-select form-select-sm">
+                <option value="">Todas</option>
+                {% for c in categorias %}
+                    <option value="{{ c.pk }}" {% if filtros.categoria == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+                <option value="sin" {% if filtros.categoria == 'sin' %}selected{% endif %}>Sin categoría</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label d-block">Campaña</label>
+            <select name="campana" class="form-select form-select-sm">
+                <option value="">Todas</option>
+                {% for c in campanas %}
+                    <option value="{{ c }}" {% if filtros.campana == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label d-block" for="filtroPlantillaWa">Campaña de WhatsApp</label>
+            <select id="filtroPlantillaWa" name="plantilla_wa" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">Sin campaña</option>
+                {% for p in plantillas_wa %}
+                    <option value="{{ p.pk }}" {% if plantilla_wa_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" name="acepta" value="1" id="filtroAcepta" {% if filtros.acepta == '1' %}checked{% endif %}>
+                <label class="form-check-label" for="filtroAcepta">Solo quienes aceptan promociones</label>
+            </div>
+        </div>
+    </div>
+    {% if not plantillas_wa %}
+    <div class="form-text">Para enviar una campaña por WhatsApp primero <a href="{% url 'plantilla_nueva' %}?tipo=whatsapp&nombre={{ 'Promo revestimientos Panamá 40%'|urlencode }}&cuerpo={{ texto_sugerido|urlencode }}">crea una plantilla con el texto sugerido</a> o <a href="{% url 'plantilla_nueva' %}?tipo=whatsapp">una en blanco</a>.</div>
+    {% endif %}
+    <div class="mt-2 d-flex align-items-center gap-2">
         <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
         <a href="{% url 'compradores_lista' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        {% if total_filtrados != total_compradores %}<span class="text-muted-soft small ms-1">{{ total_filtrados }} de {{ total_compradores }} coinciden</span>{% endif %}
     </div>
 </form>
+
+{% if campana %}
+<div class="panel campana-panel mb-3">
+    <div class="panel-body">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-2">
+            <div>
+                <h5 class="mb-1">{% icon 'chat' size=17 %} Campaña: {{ campana.plantilla.nombre }}</h5>
+                <div class="text-muted-soft small">
+                    {{ campana.con_whatsapp }} contacto{{ campana.con_whatsapp|pluralize }} con WhatsApp en este filtro · <strong data-enviados>{{ campana.enviados }}</strong> enviado{{ campana.enviados|pluralize }}
+                </div>
+            </div>
+            <div class="d-flex gap-2">
+                <a class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1" href="{% url 'compradores_exportar' %}?formato=whatsapp&{{ querystring }}">{% icon 'download' size=14 %} Descargar números</a>
+                <a class="btn btn-outline-secondary btn-sm" href="{% url 'plantilla_editar' campana.plantilla.pk %}">Editar mensaje</a>
+            </div>
+        </div>
+        <div class="mensaje-preview">
+            <div class="mensaje-preview-cuerpo">{{ campana.vista_previa }}</div>
+        </div>
+        <p class="small text-muted-soft mt-2 mb-0">
+            En cada fila: <strong>{% icon 'chat' size=13 %}</strong> abre el chat con el mensaje listo → adjunta la pieza gráfica y envía → <strong>Marcar enviado</strong>.
+            WhatsApp no deja adjuntar imágenes desde un enlace, por eso la imagen se pega en el chat.
+        </p>
+        {% if campana.sin_autorizacion and filtros.acepta != '1' %}
+        <div class="alert alert-warning small mt-3 mb-0">
+            {{ campana.sin_autorizacion }} de {{ campana.con_whatsapp }} no tiene{{ campana.sin_autorizacion|pluralize:'n' }} registrado que aceptó recibir promociones. Escribirles es posible, pero si muchos te reportan como spam WhatsApp puede limitar el número de la empresa.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
 
 <div class="table-panel">
     <div class="table-responsive">
         <table class="table table-modern table-sm align-middle mb-0">
             <thead>
                 <tr>
-                    <th>Empresa</th>
-                    <th>País / Ciudad</th>
-                    <th>Sector</th>
-                    <th>Fuente</th>
-                    <th>Estado</th>
-                    <th>Último contacto</th>
+                    <th>Nombre</th>
+                    <th class="d-none d-md-table-cell">País / Ciudad</th>
+                    <th class="d-none d-md-table-cell">Le interesa</th>
+                    <th class="d-none d-lg-table-cell">Origen</th>
+                    <th class="d-none d-sm-table-cell">Estado</th>
+                    <th class="d-none d-lg-table-cell">Último contacto</th>
                     <th class="text-end">Acciones</th>
                 </tr>
             </thead>
             <tbody>
             {% for comprador in page_obj %}
-                <tr>
+                <tr data-fila{% if comprador.ya_enviado %} class="fila-enviada"{% endif %}>
                     <td>
-                        <a class="row-link" href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_empresa }}</a>
+                        <a class="row-link" href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_mostrar }}</a>
+                        {% if comprador.nombre_empresa and comprador.nombre_contacto %}<div class="small text-muted-soft">{{ comprador.nombre_contacto }}</div>{% endif %}
+                        <div class="small text-muted-soft d-md-none">{{ comprador.pais }}{% for cat in comprador.categorias_interes.all %} · {{ cat.nombre }}{% endfor %}</div>
                     </td>
-                    <td class="text-muted-soft">
+                    <td class="text-muted-soft d-none d-md-table-cell">
                         {% if comprador.es_internacional %}<span class="intl-mark" title="Comprador internacional">{% icon 'globe' size=14 %}</span>{% endif %}{{ comprador.pais }}{% if comprador.ciudad %} · {{ comprador.ciudad }}{% endif %}
                     </td>
-                    <td>{% if comprador.sector %}<span class="pill pill-muted">{{ comprador.sector }}</span>{% else %}—{% endif %}</td>
-                    <td class="text-muted-soft">{{ comprador.get_fuente_display }}</td>
-                    <td><span class="badge badge-estado badge-{{ comprador.estado }}">{{ comprador.get_estado_display }}</span></td>
-                    <td class="text-muted-soft">{{ comprador.fecha_ultimo_contacto|hace }}</td>
+                    <td class="d-none d-md-table-cell">
+                        {% for cat in comprador.categorias_interes.all %}<span class="pill pill-muted me-1">{{ cat.nombre }}</span>{% empty %}{% if comprador.sector %}<span class="text-muted-soft small">{{ comprador.sector }}</span>{% else %}—{% endif %}{% endfor %}
+                    </td>
+                    <td class="text-muted-soft d-none d-lg-table-cell">{{ comprador.get_fuente_display }}{% if comprador.campana %}<div class="small">{{ comprador.campana }}</div>{% endif %}</td>
+                    <td class="d-none d-sm-table-cell"><span class="badge badge-estado badge-{{ comprador.estado }}">{{ comprador.get_estado_display }}</span></td>
+                    <td class="text-muted-soft d-none d-lg-table-cell">{{ comprador.fecha_ultimo_contacto|hace }}</td>
                     <td class="text-end">
                         <div class="action-cluster">
                             {% if comprador.email %}
-                            <a class="icon-btn icon-btn-mail" href="{{ comprador.mailto_url }}" title="Enviar correo" aria-label="Enviar correo a {{ comprador.nombre_empresa }}">{% icon 'mail' %}</a>
+                            <a class="icon-btn icon-btn-mail" href="{{ comprador.mailto_url }}" title="Enviar correo" aria-label="Enviar correo a {{ comprador.nombre_mostrar }}">{% icon 'mail' %}</a>
                             {% endif %}
                             {% if comprador.whatsapp_url %}
-                            <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="Contactar por WhatsApp" aria-label="Contactar a {{ comprador.nombre_empresa }} por WhatsApp">{% icon 'chat' %}</a>
+                            <a class="icon-btn icon-btn-chat" href="{{ comprador.whatsapp_url }}" target="_blank" rel="noopener" title="{% if campana %}Abrir WhatsApp con el mensaje de la campaña{% else %}Contactar por WhatsApp{% endif %}" aria-label="Contactar a {{ comprador.nombre_mostrar }} por WhatsApp" data-abrir>{% icon 'chat' %}</a>
                             {% endif %}
-                            {% if comprador.estado == 'por_contactar' %}
+                            {% if campana %}
+                                {% if comprador.whatsapp_url %}
+                                <form method="post" action="{% url 'compradores_campana_whatsapp_registrar' %}" class="d-inline" data-registrar>
+                                    {% csrf_token %}
+                                    <input type="hidden" name="comprador_id" value="{{ comprador.pk }}">
+                                    <input type="hidden" name="plantilla_id" value="{{ campana.plantilla.pk }}">
+                                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary text-nowrap" {% if comprador.ya_enviado %}disabled{% endif %}>{% if comprador.ya_enviado %}✓ Enviado{% else %}Marcar enviado{% endif %}</button>
+                                </form>
+                                {% endif %}
+                            {% elif comprador.estado == 'por_contactar' %}
                             <form method="post" action="{% url 'comprador_marcar_contactado' comprador.pk %}" class="d-inline">
                                 {% csrf_token %}
                                 <input type="hidden" name="next" value="{{ request.get_full_path }}">
-                                <button type="submit" class="icon-btn icon-btn-done" title="Marcar como contactado" aria-label="Marcar {{ comprador.nombre_empresa }} como contactado">{% icon 'check' %}</button>
+                                <button type="submit" class="icon-btn icon-btn-done" title="Marcar como contactado" aria-label="Marcar {{ comprador.nombre_mostrar }} como contactado">{% icon 'check' %}</button>
                             </form>
                             {% endif %}
                         </div>
@@ -135,6 +261,39 @@
         </table>
     </div>
 </div>
+
+{% if campana %}
+<script>
+(function () {
+    // Marca la fila como enviada sin recargar la página (si falla, el formulario se envía normal).
+    document.querySelectorAll('form[data-registrar]').forEach(function (form) {
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var boton = form.querySelector('button');
+            boton.disabled = true;
+            fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'X-Requested-With': 'fetch'}})
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(function (datos) {
+                    form.closest('[data-fila]').classList.add('fila-enviada');
+                    boton.textContent = '✓ Enviado';
+                    if (datos.creado) {
+                        var contador = document.querySelector('[data-enviados]');
+                        if (contador) contador.textContent = parseInt(contador.textContent, 10) + 1;
+                    }
+                })
+                .catch(function () { boton.disabled = false; form.submit(); });
+        });
+    });
+    // Al abrir un chat, resalta su fila para no perder el hilo.
+    document.querySelectorAll('[data-abrir]').forEach(function (enlace) {
+        enlace.addEventListener('click', function () {
+            document.querySelectorAll('.fila-activa').forEach(function (f) { f.classList.remove('fila-activa'); });
+            enlace.closest('[data-fila]').classList.add('fila-activa');
+        });
+    });
+})();
+</script>
+{% endif %}
 
 {% if page_obj.has_other_pages %}
 <nav class="mt-3">
