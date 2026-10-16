@@ -6,7 +6,11 @@ Django 6 + plantillas del servidor + Bootstrap 5.3 (sin SPA). SQLite en local, P
 
 ## Funcionalidades
 
-- **Compradores:** listado con filtros y tarjetas por estado, ficha con historial de contacto, importación CSV/Excel, importación por Hunter.io.
+- **Compradores y leads:** listado con filtros y tarjetas por estado, ficha con historial de contacto, importación por Hunter.io.
+- **Base unificada de leads:** cada contacto guarda nombre de la persona y/o empresa, origen (WhatsApp, Instagram, anuncio de Meta, página web...), campaña, categorías de interés (vehículos de subasta, excedentes industriales, inmuebles, revestimientos — editables en el admin) y si aceptó recibir promociones. País y teléfono se normalizan al guardar y el teléfono evita duplicados.
+- **Importación unificada:** Excel, CSV o el CSV de Meta Lead Ads; reconoce columnas en español e inglés, detecta categorías por palabras clave y, si el teléfono o correo ya existe, completa el registro en vez de duplicarlo. Plantilla Excel descargable.
+- **Exportación:** lo filtrado a Excel, CSV o lista para WhatsApp (nombre + número con indicativo).
+- **Campaña de WhatsApp:** filtra un grupo (ej. Panamá + revestimientos), arma el mensaje con plantilla y abre cada chat con el texto listo; "Marcar enviado" lo registra en el historial y no se repite.
 - **Proveedores / consignantes:** mismo esquema que compradores, para quienes le dan inventario a ISYN (incluye chatarreos).
 - **Productos:** inventario con carga masiva CSV/Excel (duplicados detectados por `referencia`), ficha con compradores interesados y dashboard de KPIs.
 - **Búsqueda con IA** (Gemini + Google Search) de compradores y de proveedores: hasta 5 empresas por búsqueda, corre en segundo plano y los resultados se revisan como borrador antes de guardarse.
@@ -69,7 +73,10 @@ La base de datos está en Supabase; usar la cadena del **Session pooler** (puert
 ```
 centercomp/            configuración de Django (settings, urls, wsgi)
 prospeccion/           app principal
-  models.py            Comprador, Proveedor, Producto, plantillas, historial, BusquedaIA
+  models.py            Comprador, CategoriaInteres, Proveedor, Producto, plantillas, historial, BusquedaIA
+  normalizacion.py     país y teléfono a una sola forma (dedupe, wa.me)
+  importacion.py       importación de leads (Excel, CSV, Meta Lead Ads) con fusión de duplicados
+  exportacion.py       exportación a Excel, CSV y lista para WhatsApp
   views.py             vistas de listados, fichas, importación, envío masivo y búsqueda con IA
   ia_busqueda.py       prompts y llamada a Gemini
   signals.py           match automático al crear productos
