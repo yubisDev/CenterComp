@@ -298,3 +298,66 @@ class FiltrosYExportacionTests(LoginMixin, TestCase):
         self.assertEqual(lineas[0], 'Nombre,Telefono,Pais,Categorias')
         numeros = [linea.split(',')[1] for linea in lineas[1:]]
         self.assertCountEqual(numeros, ['+50761234567', '+573001234567'])
+
+
+class CampanaWhatsappTests(LoginMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.revest = CategoriaInteres.objects.get(nombre='Revestimientos / construcción')
+        self.ana = Comprador.objects.create(nombre_contacto='Ana', telefono='6123 4567', acepta_mensajes=True)
+        self.ana.categorias_interes.add(self.revest)
+        self.repetida = Comprador.objects.create(nombre_contacto='Ana bis', whatsapp='+50761234567')
+        self.repetida.categorias_interes.add(self.revest)
+        self.col = Comprador.objects.create(nombre_contacto='Luis', telefono='3001234567')
+        self.col.categorias_interes.add(self.revest)
+        Comprador.objects.create(nombre_empresa='Sin teléfono', email='x@ejemplo.com', pais='Panamá')
+        self.plantilla = PlantillaMensaje.objects.create(
+            nombre='Promo 40', tipo=PlantillaMensaje.Tipo.WHATSAPP, cuerpo='Hola {nombre}, 40% de descuento',
+        )
+        self.url = reverse('compradores_campana_whatsapp')
+
+    def test_filtra_panama_revestimientos_sin_repetir_numeros(self):
+        respuesta = self.client.get(self.url, {
+            'pais': 'Panamá', 'categoria': self.revest.pk, 'plantilla': self.plantilla.pk,
+        })
+        self.assertEqual(respuesta.status_code, 200)
+        destinatarios = respuesta.context['destinatarios']
+        self.assertEqual(len(destinatarios), 1)
+        self.assertEqual(destinatarios[0].mensaje, 'Hola Ana, 40% de descuento')
+        self.assertIn('https://wa.me/50761234567?text=Hola%20Ana', destinatarios[0].whatsapp_url)
+        self.assertEqual(respuesta.context['sin_autorizacion'], 0)
+
+    def test_avisa_contactos_sin_autorizacion(self):
+        respuesta = self.client.get(self.url, {'categoria': self.revest.pk})
+        self.assertEqual(respuesta.context['sin_autorizacion'], 1)
+        self.assertContains(respuesta, 'no tiene registrado que aceptó')
+
+    def test_marcar_enviado_registra_historial_una_sola_vez(self):
+        datos = {'comprador_id': self.ana.pk, 'plantilla_id': self.plantilla.pk}
+        url = reverse('compradores_campana_whatsapp_registrar')
+        r1 = self.client.post(url, datos, HTTP_X_REQUESTED_WITH='fetch')
+        r2 = self.client.post(url, datos, HTTP_X_REQUESTED_WITH='fetch')
+        self.assertEqual(r1.json(), {'ok': True, 'creado': True})
+        self.assertEqual(r2.json(), {'ok': True, 'creado': False})
+        self.ana.refresh_from_db()
+        self.assertEqual(self.ana.historial.count(), 1)
+        self.assertEqual(self.ana.historial.get().medio, 'whatsapp')
+        self.assertEqual(self.ana.estado, Comprador.Estado.CONTACTADO)
+
+        respuesta = self.client.get(self.url, {'pais': 'Panamá', 'plantilla': self.plantilla.pk})
+        self.assertTrue(respuesta.context['destinatarios'][0].ya_enviado)
+        self.assertEqual(respuesta.context['enviados'], 1)
+
+    def test_marcar_enviado_sin_javascript_redirige(self):
+        respuesta = self.client.post(reverse('compradores_campana_whatsapp_registrar'), {
+            'comprador_id': self.ana.pk, 'plantilla_id': self.plantilla.pk, 'next': self.url + '?pais=Panam%C3%A1',
+        })
+        self.assertRedirects(respuesta, self.url + '?pais=Panam%C3%A1', fetch_redirect_response=False)
+
+    def test_texto_sugerido_precarga_la_plantilla(self):
+        respuesta = self.client.get(reverse('plantilla_nueva'), {'tipo': 'whatsapp', 'cuerpo': 'Hola {nombre}'})
+        self.assertEqual(respuesta.context['form'].initial['cuerpo'], 'Hola {nombre}')
+
+    def test_requiere_login(self):
+        self.client.logout()
+        self.assertEqual(self.client.get(self.url).status_code, 302)

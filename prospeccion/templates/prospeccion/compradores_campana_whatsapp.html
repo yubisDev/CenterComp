@@ -1,0 +1,184 @@
+{% extends 'base.html' %}
+{% load icons %}
+{% block title %}Campaña de WhatsApp{% endblock %}
+{% block page_title %}Campaña de WhatsApp{% endblock %}
+{% block page_subtitle %}<div class="subtitle">Escoge un grupo de la base, prepara el mensaje y envíalo contacto por contacto desde tu WhatsApp Business</div>{% endblock %}
+{% block content %}
+
+<form method="get" id="filtroForm">
+<div class="row g-3 mb-3">
+    <div class="col-12 col-lg-5">
+        <div class="panel h-100">
+            <div class="p-4">
+                <h5 class="mb-1">1. ¿A quién le escribimos?</h5>
+                <p class="text-muted-soft small mb-3">Solo aparecen contactos con un número válido; los repetidos se muestran una vez.</p>
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label d-block" for="fPais">País</label>
+                        <select id="fPais" name="pais" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                            {% for p in paises %}<option value="{{ p }}" {% if filtros.pais == p %}selected{% endif %}>{{ p }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label d-block" for="fCategoria">Categoría de interés</label>
+                        <select id="fCategoria" name="categoria" class="form-select form-select-sm">
+                            <option value="">Todas</option>
+                            {% for c in categorias %}<option value="{{ c.pk }}" {% if filtros.categoria == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label d-block" for="fEstado">Estado</label>
+                        <select id="fEstado" name="estado" class="form-select form-select-sm">
+                            <option value="">Todos</option>
+                            {% for value, label in estados %}<option value="{{ value }}" {% if filtros.estado == value %}selected{% endif %}>{{ label }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="form-label d-block" for="fCampana">Campaña de origen</label>
+                        <select id="fCampana" name="campana" class="form-select form-select-sm">
+                            <option value="">Todas</option>
+                            {% for c in campanas %}<option value="{{ c }}" {% if filtros.campana == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div class="form-check mt-3">
+                    <input class="form-check-input" type="checkbox" name="acepta" value="1" id="fAcepta" {% if filtros.acepta == '1' %}checked{% endif %}>
+                    <label class="form-check-label" for="fAcepta">Solo quienes aceptaron recibir promociones</label>
+                </div>
+                <div class="d-flex align-items-center gap-2 mt-3">
+                    <button type="submit" class="btn btn-outline-primary btn-sm">Aplicar filtros</button>
+                    <a href="{% url 'compradores_campana_whatsapp' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-lg-7">
+        <div class="panel h-100">
+            <div class="p-4">
+                <h5 class="mb-1">2. Mensaje</h5>
+                <p class="text-muted-soft small mb-3">Usa <code>{nombre}</code> para saludar a cada persona por su nombre.</p>
+                <label class="form-label d-block" for="fPlantilla">Plantilla de WhatsApp</label>
+                <select id="fPlantilla" name="plantilla" class="form-select form-select-sm" onchange="this.form.submit()">
+                    <option value="">Elige una plantilla…</option>
+                    {% for p in plantillas %}<option value="{{ p.pk }}" {% if plantilla_id == p.pk|stringformat:'s' %}selected{% endif %}>{{ p.nombre }}</option>{% endfor %}
+                </select>
+                <div class="form-text">
+                    <a href="{% url 'plantilla_nueva' %}?tipo=whatsapp&nombre={{ 'Promo revestimientos Panamá 40%'|urlencode }}&cuerpo={{ texto_sugerido|urlencode }}">Crear plantilla con texto sugerido (revestimientos 40 %)</a>
+                    · <a href="{% url 'plantilla_nueva' %}?tipo=whatsapp">Crear plantilla en blanco</a>
+                </div>
+
+                {% if plantilla %}
+                <div class="mensaje-preview mt-3">
+                    <div class="mensaje-preview-cuerpo">{% if destinatarios %}{{ destinatarios.0.mensaje }}{% else %}{{ plantilla.cuerpo }}{% endif %}</div>
+                </div>
+                <p class="small text-muted-soft mt-2 mb-0">{% icon 'alert' size=14 %} WhatsApp no deja adjuntar imágenes desde un enlace: pega o adjunta la pieza gráfica en el chat antes de enviar. Si vas a usar una lista de difusión, descarga los números abajo.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+</form>
+
+{% if sin_autorizacion and filtros.acepta != '1' %}
+<div class="alert alert-warning">
+    {{ sin_autorizacion }} de {{ total }} contacto{{ total|pluralize }} no tiene{{ sin_autorizacion|pluralize:'n' }} registrado que aceptó recibir promociones.
+    Escribirles en frío es posible, pero si muchos te reportan como spam WhatsApp puede limitar el número de la empresa.
+</div>
+{% endif %}
+
+<div class="panel mb-3">
+    <div class="p-4 pb-0">
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+            <h5 class="mb-0">3. Enviar</h5>
+            <div class="d-flex align-items-center flex-wrap gap-2">
+                <span class="text-muted-soft small" id="contadorCampana">
+                    {{ total }} contacto{{ total|pluralize }}{% if plantilla %} · <strong data-enviados>{{ enviados }}</strong> enviado{{ enviados|pluralize }}{% endif %}
+                    {% if total > limite %}(mostrando los primeros {{ limite }}){% endif %}
+                </span>
+                <a class="btn btn-outline-secondary btn-sm d-inline-flex align-items-center gap-1" href="{% url 'compradores_exportar' %}?formato=whatsapp{% if querystring_filtros %}&{{ querystring_filtros }}{% endif %}">{% icon 'download' size=14 %} Descargar números</a>
+            </div>
+        </div>
+        {% if plantilla %}<p class="small text-muted-soft">Por cada contacto: <strong>Abrir WhatsApp</strong> → adjunta la imagen y envía → <strong>Marcar enviado</strong>. Queda en el historial y no se te repite.</p>{% endif %}
+    </div>
+    <div class="table-responsive">
+        <table class="table table-modern table-sm align-middle mb-0">
+            <thead>
+                <tr>
+                    <th>Nombre</th>
+                    <th>WhatsApp</th>
+                    <th>País</th>
+                    <th>Le interesa</th>
+                    <th class="text-end">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for c in destinatarios %}
+                <tr class="{% if c.ya_enviado %}fila-enviada{% endif %}" data-fila>
+                    <td>
+                        <a class="row-link" href="{% url 'comprador_detalle' c.pk %}">{{ c.nombre_mostrar }}</a>
+                        {% if not c.acepta_mensajes %}<div class="small text-muted-soft">Sin autorización registrada</div>{% endif %}
+                    </td>
+                    <td class="text-muted-soft">+{{ c.whatsapp_numero }}</td>
+                    <td class="text-muted-soft">{{ c.pais|default:'—' }}</td>
+                    <td>{% for cat in c.categorias_interes.all %}<span class="pill pill-muted me-1">{{ cat.nombre }}</span>{% empty %}—{% endfor %}</td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-outline-success d-inline-flex align-items-center gap-1" href="{{ c.whatsapp_url }}" target="_blank" rel="noopener" data-abrir>{% icon 'chat' size=14 %} Abrir WhatsApp</a>
+                        {% if plantilla %}
+                        <form method="post" action="{% url 'compradores_campana_whatsapp_registrar' %}" class="d-inline" data-registrar>
+                            {% csrf_token %}
+                            <input type="hidden" name="comprador_id" value="{{ c.pk }}">
+                            <input type="hidden" name="plantilla_id" value="{{ plantilla.pk }}">
+                            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                            <button type="submit" class="btn btn-sm btn-outline-secondary" {% if c.ya_enviado %}disabled{% endif %}>
+                                {% if c.ya_enviado %}{% icon 'check' size=14 %} Enviado{% else %}Marcar enviado{% endif %}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+            {% empty %}
+                <tr><td colspan="5">
+                    <div class="empty-state">
+                        {% icon 'chat' size=30 %}
+                        <p>Ningún contacto con WhatsApp coincide con estos filtros.</p>
+                    </div>
+                </td></tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+(function () {
+    // Marca la fila como enviada sin recargar la página (si falla, el formulario se envía normal).
+    document.querySelectorAll('form[data-registrar]').forEach(function (form) {
+        form.addEventListener('submit', function (ev) {
+            ev.preventDefault();
+            var boton = form.querySelector('button');
+            boton.disabled = true;
+            fetch(form.action, {method: 'POST', body: new FormData(form), headers: {'X-Requested-With': 'fetch'}})
+                .then(function (r) { if (!r.ok) throw new Error(r.status); return r.json(); })
+                .then(function (datos) {
+                    form.closest('[data-fila]').classList.add('fila-enviada');
+                    boton.textContent = '✓ Enviado';
+                    if (datos.creado) {
+                        var contador = document.querySelector('[data-enviados]');
+                        if (contador) contador.textContent = parseInt(contador.textContent, 10) + 1;
+                    }
+                })
+                .catch(function () { boton.disabled = false; form.submit(); });
+        });
+    });
+    // Al abrir un chat, resalta su fila para no perder el hilo.
+    document.querySelectorAll('[data-abrir]').forEach(function (enlace) {
+        enlace.addEventListener('click', function () {
+            document.querySelectorAll('.fila-activa').forEach(function (f) { f.classList.remove('fila-activa'); });
+            enlace.closest('[data-fila]').classList.add('fila-activa');
+        });
+    });
+})();
+</script>
+{% endblock %}

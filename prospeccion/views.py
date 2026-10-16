@@ -459,6 +459,107 @@ def compradores_envio_masivo_enviar(request):
     return redirect('compradores_lista')
 
 
+CAMPANA_WHATSAPP_LIMITE = 300
+
+TEXTO_SUGERIDO_REVESTIMIENTOS = (
+    'Hola {nombre} 👋, te escribimos de ISYN.\n\n'
+    'Tenemos excedentes de revestimientos para construcción en Panamá con *40% de descuento* '
+    'por tiempo limitado.\n\n'
+    '¿Te comparto el catálogo con referencias y precios?'
+)
+
+
+def _marca_campana_whatsapp(plantilla):
+    return f'Campaña WhatsApp — plantilla "{plantilla.nombre}"'
+
+
+@login_required
+def compradores_campana_whatsapp(request):
+    plantillas = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP)
+    plantilla_id = request.GET.get('plantilla', '')
+    plantilla = plantillas.filter(pk=plantilla_id).first() if plantilla_id.isdecimal() else None
+
+    qs = Comprador.objects.prefetch_related('categorias_interes').exclude(telefono_normalizado='')
+    qs, filtros = _aplicar_filtros_comprador(qs, request.GET)
+    qs = qs.distinct().order_by('nombre_empresa', 'nombre_contacto')
+
+    ya_enviados = set()
+    if plantilla:
+        ya_enviados = set(
+            HistorialContacto.objects.filter(resultado=_marca_campana_whatsapp(plantilla))
+            .values_list('comprador_id', flat=True)
+        )
+
+    destinatarios = []
+    numeros_vistos = set()
+    sin_autorizacion = 0
+    for comprador in qs:
+        numero = comprador.whatsapp_numero
+        if len(numero) < 8 or numero in numeros_vistos:
+            continue
+        numeros_vistos.add(numero)
+        if not comprador.acepta_mensajes:
+            sin_autorizacion += 1
+        comprador.ya_enviado = comprador.pk in ya_enviados
+        if plantilla:
+            _, cuerpo = plantilla.render(comprador)
+            comprador.mensaje = cuerpo
+            comprador.whatsapp_url = f'https://wa.me/{numero}?text={quote(cuerpo)}'
+        else:
+            comprador.mensaje = ''
+            comprador.whatsapp_url = f'https://wa.me/{numero}'
+        destinatarios.append(comprador)
+
+    total = len(destinatarios)
+    pendientes = sum(1 for c in destinatarios if not c.ya_enviado)
+    querystring = request.GET.copy()
+    querystring.pop('plantilla', None)
+
+    context = {
+        **_opciones_filtro_comprador(),
+        'filtros': filtros,
+        'plantillas': plantillas,
+        'plantilla': plantilla,
+        'plantilla_id': plantilla_id,
+        'destinatarios': destinatarios[:CAMPANA_WHATSAPP_LIMITE],
+        'total': total,
+        'pendientes': pendientes,
+        'enviados': total - pendientes,
+        'sin_autorizacion': sin_autorizacion,
+        'limite': CAMPANA_WHATSAPP_LIMITE,
+        'querystring_filtros': querystring.urlencode(),
+        'texto_sugerido': TEXTO_SUGERIDO_REVESTIMIENTOS,
+    }
+    return render(request, 'prospeccion/compradores_campana_whatsapp.html', context)
+
+
+@login_required
+@require_POST
+def compradores_campana_whatsapp_registrar(request):
+    """Registra en el historial que se le envió el mensaje de la campaña a un contacto."""
+    comprador = get_object_or_404(Comprador, pk=request.POST.get('comprador_id'))
+    plantilla = get_object_or_404(
+        PlantillaMensaje, pk=request.POST.get('plantilla_id'), tipo=PlantillaMensaje.Tipo.WHATSAPP,
+    )
+    marca = _marca_campana_whatsapp(plantilla)
+    creado = False
+    if not HistorialContacto.objects.filter(comprador=comprador, resultado=marca).exists():
+        HistorialContacto.objects.create(
+            comprador=comprador, medio=HistorialContacto.Medio.WHATSAPP, resultado=marca, usuario=request.user,
+        )
+        comprador.fecha_ultimo_contacto = timezone.now()
+        if comprador.estado == Comprador.Estado.POR_CONTACTAR:
+            comprador.estado = Comprador.Estado.CONTACTADO
+        comprador.save()
+        creado = True
+
+    if request.headers.get('x-requested-with') == 'fetch':
+        return JsonResponse({'ok': True, 'creado': creado})
+    messages.success(request, f'Envío a {comprador.nombre_mostrar} registrado.')
+    destino = _url_segura(request, request.POST.get('next'), reverse('compradores_campana_whatsapp'))
+    return redirect(destino)
+
+
 @login_required
 def compradores_importar(request):
     resumen = None
@@ -1297,7 +1398,11 @@ def plantilla_form(request, pk=None):
             messages.success(request, 'Plantilla guardada correctamente.')
             return redirect('plantillas_lista')
     else:
-        form = PlantillaMensajeForm(instance=plantilla)
+        inicial = {}
+        if not plantilla:
+            # Permite abrir el formulario con un texto sugerido (ej. desde la campaña de WhatsApp).
+            inicial = {k: request.GET[k] for k in ('nombre', 'tipo', 'cuerpo') if request.GET.get(k)}
+        form = PlantillaMensajeForm(instance=plantilla, initial=inicial)
     return render(request, 'prospeccion/plantilla_form.html', {'form': form, 'plantilla': plantilla})
 
 

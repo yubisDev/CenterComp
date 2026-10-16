@@ -889,3 +889,7 @@ table.table-modern.table-sm tbody td { padding: .42rem .75rem; }
     color: inherit; text-decoration: none; font-size: .9rem;
 }
 .resumen-fila:hover { background: var(--bg-surface-sunken); }
+
+/* Campaña de WhatsApp */
+.fila-enviada td { opacity: .55; }
+.fila-activa td { background: var(--brand-100); }
