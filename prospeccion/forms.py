@@ -110,9 +110,28 @@ class HistorialContactoForm(forms.ModelForm):
 class ImportarCompradoresForm(forms.Form):
     archivo = forms.FileField(
         label='Archivo CSV o Excel',
-        help_text='Columnas esperadas: nombre_empresa, pais, ciudad, sector, email, telefono, fuente, '
-                   'palabras_clave (opcional, separadas por coma — alertas por correo si SMTP está configurado)',
-        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.csv,.xlsx,.xls'}),
+        help_text='Excel (.xlsx) o CSV. También sirve el CSV que descarga Meta Lead Ads.',
+        widget=forms.ClearableFileInput(attrs={'class': 'form-control', 'accept': '.csv,.tsv,.txt,.xlsx'}),
+    )
+    fuente = forms.ChoiceField(
+        label='Origen (si el archivo no lo trae)', required=False,
+        choices=[('', 'Detectar automáticamente')] + list(Comprador.Fuente.choices),
+        widget=forms.Select(attrs={'class': 'form-select'}),
+        help_text='Ej. "WhatsApp" si son contactos exportados del WhatsApp Business.',
+    )
+    campana = forms.CharField(
+        label='Campaña (si el archivo no la trae)', required=False, max_length=200,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'Ej. Revestimientos Panamá - octubre'}),
+    )
+    categorias = forms.ModelMultipleChoiceField(
+        label='Asignar a todos estas categorías', required=False,
+        queryset=CategoriaInteres.objects.filter(activa=True),
+        widget=forms.CheckboxSelectMultiple(attrs={'class': 'form-check-input'}),
+        help_text='Además de las que se detecten en el archivo. Útil si exportaste una etiqueta de WhatsApp.',
+    )
+    acepta_mensajes = forms.BooleanField(
+        label='Todos aceptaron recibir promociones', required=False,
+        widget=forms.CheckboxInput(attrs={'class': 'form-check-input'}),
     )
 
 

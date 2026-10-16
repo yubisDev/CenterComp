@@ -6,6 +6,7 @@ urlpatterns = [
     path('', views.compradores_lista, name='compradores_lista'),
     path('compradores/nuevo/', views.comprador_form, name='comprador_nuevo'),
     path('compradores/importar/', views.compradores_importar, name='compradores_importar'),
+    path('compradores/importar/plantilla/', views.compradores_importar_plantilla, name='compradores_importar_plantilla'),
     path('compradores/buscar-ia/', views.compradores_buscar_ia, name='compradores_buscar_ia'),
     path('compradores/buscar-ia/ejecutar/', views.compradores_buscar_ia_ejecutar, name='compradores_buscar_ia_ejecutar'),
     path('compradores/buscar-ia/estado/<int:busqueda_id>/', views.compradores_buscar_ia_estado, name='compradores_buscar_ia_estado'),

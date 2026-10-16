@@ -11,13 +11,13 @@ from django.contrib.auth.decorators import login_required
 from django.core.mail import EmailMessage, get_connection
 from django.core.paginator import Paginator
 from django.db.models import Count, Q, Sum
-from django.http import Http404, JsonResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone, formats
 from django.views.decorators.http import require_POST
 
-from . import ia_busqueda
+from . import ia_busqueda, importacion
 from .forms import (
     BusquedaIAForm,
     CompradorForm,
@@ -42,17 +42,6 @@ from .texto import titulo_inteligente
 
 _SIN_CARGAR = object()  # centinela: "no me pasaron la plantilla, búscala tú" (distinto de None = "ya sé que no hay")
 
-FUENTE_ALIASES = {
-    'hunter': Comprador.Fuente.HUNTER,
-    'hunter.io': Comprador.Fuente.HUNTER,
-    'apollo': Comprador.Fuente.APOLLO,
-    'procolombia': Comprador.Fuente.PROCOLOMBIA,
-    'camara de comercio': Comprador.Fuente.CAMARA_COMERCIO,
-    'cámara de comercio': Comprador.Fuente.CAMARA_COMERCIO,
-    'linkedin': Comprador.Fuente.LINKEDIN,
-    'linkedin sales navigator': Comprador.Fuente.LINKEDIN,
-    'manual': Comprador.Fuente.MANUAL,
-}
 
 
 def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN_CARGAR):
@@ -400,11 +389,21 @@ def compradores_importar(request):
     if request.method == 'POST':
         form = ImportarCompradoresForm(request.POST, request.FILES)
         if form.is_valid():
-            resumen = _procesar_importacion(form.cleaned_data['archivo'])
+            datos = form.cleaned_data
+            resumen = importacion.procesar_importacion(
+                datos['archivo'],
+                fuente_defecto=datos['fuente'],
+                campana_defecto=datos['campana'],
+                categorias_defecto=datos['categorias'],
+                acepta_defecto=datos['acepta_mensajes'],
+            )
+            total = resumen['creados'] + resumen['actualizados']
             if resumen['errores']:
-                messages.warning(request, f"Importación completada con {len(resumen['errores'])} error(es).")
+                messages.warning(request, f"Importación terminada con {len(resumen['errores'])} fila(s) con problemas.")
+            elif total:
+                messages.success(request, f"Importación lista: {resumen['creados']} nuevos y {resumen['actualizados']} actualizados.")
             else:
-                messages.success(request, f"Se importaron {resumen['creados']} compradores nuevos.")
+                messages.info(request, 'No había datos nuevos en el archivo.')
     else:
         form = ImportarCompradoresForm()
     return render(request, 'prospeccion/compradores_importar.html', {
@@ -414,77 +413,22 @@ def compradores_importar(request):
     })
 
 
-IMPORTACION_TAMANO_MAXIMO = 10 * 1024 * 1024  # 10 MB
+@login_required
+def compradores_importar_plantilla(request):
+    respuesta = HttpResponse(
+        importacion.construir_plantilla_excel(),
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
+    respuesta['Content-Disposition'] = 'attachment; filename="plantilla_leads.xlsx"'
+    return respuesta
 
 
-def _procesar_importacion(archivo):
-    nombre = archivo.name.lower()
-    filas = []
-    errores = []
+IMPORTACION_TAMANO_MAXIMO = importacion.TAMANO_MAXIMO
 
-    if archivo.size > IMPORTACION_TAMANO_MAXIMO:
-        return {'creados': 0, 'errores': ['El archivo supera el tamaño máximo permitido (10 MB).']}
 
-    if nombre.endswith('.csv'):
-        contenido = archivo.read().decode('utf-8-sig', errors='replace')
-        lector = csv.DictReader(io.StringIO(contenido))
-        for fila in lector:
-            filas.append({(k or '').strip().lower(): (v or '').strip() for k, v in fila.items()})
-    elif nombre.endswith('.xlsx') or nombre.endswith('.xls'):
-        import openpyxl
-
-        wb = openpyxl.load_workbook(archivo, read_only=True, data_only=True)
-        ws = wb.active
-        filas_iter = ws.iter_rows(values_only=True)
-        encabezados = [str(h).strip().lower() if h else '' for h in next(filas_iter)]
-        for fila in filas_iter:
-            valores = {}
-            for header, valor in zip(encabezados, fila):
-                if header:
-                    valores[header] = str(valor).strip() if valor is not None else ''
-            if any(valores.values()):
-                filas.append(valores)
-    else:
-        return {'creados': 0, 'errores': ['Formato de archivo no soportado. Usa CSV o Excel (.xlsx).']}
-
-    creados = 0
-    for i, fila in enumerate(filas, start=2):
-        nombre_empresa = fila.get('nombre_empresa') or fila.get('empresa') or ''
-        if not nombre_empresa:
-            errores.append(f'Fila {i}: falta nombre_empresa, se omitió.')
-            continue
-        nombre_empresa = titulo_inteligente(nombre_empresa)
-
-        fuente_raw = (fila.get('fuente') or '').strip().lower()
-        fuente = FUENTE_ALIASES.get(fuente_raw, Comprador.Fuente.MANUAL)
-
-        email = fila.get('email') or fila.get('correo') or ''
-        existente = None
-        if email:
-            existente = Comprador.objects.filter(nombre_empresa__iexact=nombre_empresa, email__iexact=email).first()
-        if existente:
-            errores.append(f'Fila {i}: "{nombre_empresa}" ya existe, se omitió.')
-            continue
-
-        Comprador.objects.create(
-            nombre_empresa=nombre_empresa,
-            pais=fila.get('pais') or fila.get('país') or '',
-            ciudad=fila.get('ciudad') or '',
-            sector=fila.get('sector') or fila.get('industria') or '',
-            email=email,
-            telefono=fila.get('telefono') or fila.get('teléfono') or fila.get('whatsapp') or '',
-            linkedin_url=fila.get('linkedin') or '',
-            facebook_url=fila.get('facebook') or '',
-            instagram_url=fila.get('instagram') or '',
-            sitio_web=fila.get('sitio_web') or fila.get('web') or fila.get('website') or '',
-            fuente=fuente,
-            palabras_clave_interes=(
-                fila.get('palabras_clave') or fila.get('palabras_clave_interes') or fila.get('intereses') or ''
-            )[:300],
-        )
-        creados += 1
-
-    return {'creados': creados, 'errores': errores}
+def _procesar_importacion(archivo, **opciones):
+    """Se mantiene por compatibilidad; la lógica vive en importacion.py."""
+    return importacion.procesar_importacion(archivo, **opciones)
 
 
 @login_required
