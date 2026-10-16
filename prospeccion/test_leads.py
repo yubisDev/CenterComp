@@ -239,3 +239,62 @@ class ImportacionVistaTests(LoginMixin, TestCase):
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, 'Resultado de la importación')
         self.assertEqual(Comprador.objects.get().fuente, 'whatsapp')
+
+
+class FiltrosYExportacionTests(LoginMixin, TestCase):
+    def setUp(self):
+        super().setUp()
+        self.revest = CategoriaInteres.objects.get(nombre='Revestimientos / construcción')
+        self.vehic = CategoriaInteres.objects.get(nombre='Vehículos de subasta')
+        self.ana = Comprador.objects.create(
+            nombre_contacto='Ana', telefono='6123 4567', pais='Panamá', campana='Revest PA',
+            fuente='meta_ads', acepta_mensajes=True,
+        )
+        self.ana.categorias_interes.add(self.revest)
+        self.luis = Comprador.objects.create(nombre_contacto='Luis', telefono='3001234567', pais='Colombia')
+        self.luis.categorias_interes.add(self.vehic, self.revest)
+        self.sin = Comprador.objects.create(nombre_empresa='Acme', email='acme@ejemplo.com', pais='Colombia')
+
+    def _nombres(self, **params):
+        respuesta = self.client.get(reverse('compradores_lista'), params)
+        self.assertEqual(respuesta.status_code, 200)
+        return {c.nombre_mostrar for c in respuesta.context['page_obj']}
+
+    def test_filtro_por_categoria_y_sin_categoria(self):
+        self.assertEqual(self._nombres(categoria=self.revest.pk), {'Ana', 'Luis'})
+        self.assertEqual(self._nombres(categoria='sin'), {'Acme'})
+
+    def test_filtro_por_pais_categoria_y_acepta(self):
+        self.assertEqual(self._nombres(pais='Panamá', categoria=self.revest.pk, acepta='1'), {'Ana'})
+
+    def test_buscar_por_telefono_y_campana(self):
+        self.assertEqual(self._nombres(q='6123'), {'Ana'})
+        self.assertEqual(self._nombres(q='revest'), {'Ana'})
+
+    def test_resumen_de_la_base(self):
+        respuesta = self.client.get(reverse('compradores_lista'))
+        resumen = respuesta.context['resumen_base']
+        por_cat = {c['nombre']: c['cantidad'] for c in resumen['por_categoria']}
+        self.assertEqual(por_cat['Revestimientos / construcción'], 2)
+        self.assertEqual(resumen['sin_categoria'], 1)
+
+    def test_exportar_excel_respeta_filtros(self):
+        import io
+
+        import openpyxl
+        respuesta = self.client.get(reverse('compradores_exportar'), {'formato': 'xlsx', 'pais': 'Panamá'})
+        self.assertEqual(respuesta.status_code, 200)
+        wb = openpyxl.load_workbook(io.BytesIO(respuesta.content))
+        filas = list(wb.active.iter_rows(values_only=True))
+        self.assertEqual(len(filas), 2)
+        self.assertEqual(filas[1][0], 'Ana')
+        self.assertIn('+50761234567', filas[1])
+        self.assertIn('Revestimientos / construcción', filas[1])
+
+    def test_exportar_lista_whatsapp_sin_repetidos_ni_vacios(self):
+        Comprador.objects.create(nombre_empresa='Duplicado', whatsapp='+507 6123 4567', pais='Panamá')
+        respuesta = self.client.get(reverse('compradores_exportar'), {'formato': 'whatsapp'})
+        lineas = respuesta.content.decode('utf-8-sig').strip().splitlines()
+        self.assertEqual(lineas[0], 'Nombre,Telefono,Pais,Categorias')
+        numeros = [linea.split(',')[1] for linea in lineas[1:]]
+        self.assertCountEqual(numeros, ['+50761234567', '+573001234567'])

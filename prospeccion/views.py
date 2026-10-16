@@ -17,7 +17,7 @@ from django.urls import reverse
 from django.utils import timezone, formats
 from django.views.decorators.http import require_POST
 
-from . import ia_busqueda, importacion
+from . import exportacion, ia_busqueda, importacion
 from .forms import (
     BusquedaIAForm,
     CompradorForm,
@@ -31,6 +31,7 @@ from .forms import (
 )
 from .models import (
     BusquedaIA,
+    CategoriaInteres,
     Comprador,
     HistorialContacto,
     HistorialContactoProveedor,
@@ -82,18 +83,26 @@ def _construir_mensaje(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN
 
 
 def _aplicar_filtros_comprador(qs, params):
-    """Aplica al queryset los mismos filtros de búsqueda (q/estado/pais/sector/fuente)
-    usados tanto en el listado de compradores como en el envío masivo."""
+    """Aplica al queryset los filtros de búsqueda usados en el listado de
+    compradores, el envío masivo, la exportación y la campaña de WhatsApp."""
     q = params.get('q', '').strip()
     estado = params.get('estado', '')
     pais = params.get('pais', '')
     sector = params.get('sector', '')
     fuente = params.get('fuente', '')
+    categoria = params.get('categoria', '').strip()
+    campana = params.get('campana', '')
+    acepta = params.get('acepta', '')
 
     if q:
-        qs = qs.filter(
-            Q(nombre_empresa__icontains=q) | Q(pais__icontains=q) | Q(sector__icontains=q)
+        filtro = (
+            Q(nombre_empresa__icontains=q) | Q(nombre_contacto__icontains=q) | Q(pais__icontains=q)
+            | Q(sector__icontains=q) | Q(email__icontains=q) | Q(campana__icontains=q)
         )
+        digitos = ''.join(ch for ch in q if ch.isdigit())
+        if len(digitos) >= 4:
+            filtro |= Q(telefono_normalizado__contains=digitos)
+        qs = qs.filter(filtro)
     if estado:
         qs = qs.filter(estado=estado)
     if pais:
@@ -102,9 +111,32 @@ def _aplicar_filtros_comprador(qs, params):
         qs = qs.filter(sector=sector)
     if fuente:
         qs = qs.filter(fuente=fuente)
+    if categoria == 'sin':
+        qs = qs.filter(categorias_interes__isnull=True)
+    elif categoria.isdecimal():
+        qs = qs.filter(categorias_interes=categoria)
+    if campana:
+        qs = qs.filter(campana=campana)
+    if acepta == '1':
+        qs = qs.filter(acepta_mensajes=True)
 
-    filtros = {'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente}
+    filtros = {
+        'q': q, 'estado': estado, 'pais': pais, 'sector': sector, 'fuente': fuente,
+        'categoria': categoria, 'campana': campana, 'acepta': acepta,
+    }
     return qs, filtros
+
+
+def _opciones_filtro_comprador():
+    """Listas para llenar los selectores de filtro."""
+    return {
+        'estados': Comprador.Estado.choices,
+        'fuentes': Comprador.Fuente.choices,
+        'paises': Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais'),
+        'sectores': Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector'),
+        'categorias': CategoriaInteres.objects.filter(activa=True),
+        'campanas': Comprador.objects.exclude(campana='').values_list('campana', flat=True).distinct().order_by('campana'),
+    }
 
 
 ETAPA_INDICE = {
@@ -128,8 +160,10 @@ def _enriquecer(comprador, plantilla_email=_SIN_CARGAR, plantilla_wa=_SIN_CARGAR
 
 @login_required
 def compradores_lista(request):
-    qs = Comprador.objects.prefetch_related('productos_interes')
+    qs = Comprador.objects.prefetch_related('productos_interes', 'categorias_interes')
     qs, filtros = _aplicar_filtros_comprador(qs, request.GET)
+    qs = qs.distinct()
+    total_filtrados = qs.count()
 
     paginator = Paginator(qs, 20)
     page_obj = paginator.get_page(request.GET.get('page'))
@@ -137,9 +171,6 @@ def compradores_lista(request):
     plantilla_wa = PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.WHATSAPP).first()
     for comprador in page_obj.object_list:
         _enriquecer(comprador, plantilla_email, plantilla_wa)
-
-    paises = Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais')
-    sectores = Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector')
 
     querystring = request.GET.copy()
     querystring.pop('page', None)
@@ -164,19 +195,65 @@ def compradores_lista(request):
             'activo': filtros['estado'] == valor,
         })
 
+    hay_filtros_extra = any(filtros[k] for k in ('sector', 'categoria', 'campana', 'acepta'))
     context = {
         'page_obj': page_obj,
-        'estados': Comprador.Estado.choices,
-        'fuentes': Comprador.Fuente.choices,
-        'paises': paises,
-        'sectores': sectores,
         'filtros': filtros,
         'querystring': querystring.urlencode(),
         'querystring_sin_estado': querystring_sin_estado.urlencode(),
         'total_compradores': total,
+        'total_filtrados': total_filtrados,
         'embudo': embudo,
+        'resumen_base': _resumen_base(todos) if total else None,
+        'hay_filtros_extra': hay_filtros_extra,
+        **_opciones_filtro_comprador(),
     }
     return render(request, 'prospeccion/compradores_lista.html', context)
+
+
+def _resumen_base(qs):
+    """Cuántos leads hay por categoría de interés, por país y por origen."""
+    sin_categoria = qs.filter(categorias_interes__isnull=True).count()
+    por_categoria = list(
+        CategoriaInteres.objects.filter(activa=True)
+        .annotate(cantidad=Count('compradores'))
+        .values('pk', 'nombre', 'cantidad')
+    )
+    por_pais = list(qs.exclude(pais='').values('pais').annotate(cantidad=Count('pk')).order_by('-cantidad')[:6])
+    etiquetas_fuente = dict(Comprador.Fuente.choices)
+    por_fuente = [
+        {'fuente': f['fuente'], 'etiqueta': etiquetas_fuente.get(f['fuente'], f['fuente']), 'cantidad': f['cantidad']}
+        for f in qs.values('fuente').annotate(cantidad=Count('pk')).order_by('-cantidad')[:6]
+    ]
+    return {
+        'por_categoria': por_categoria,
+        'sin_categoria': sin_categoria,
+        'por_pais': por_pais,
+        'por_fuente': por_fuente,
+    }
+
+
+@login_required
+def compradores_exportar(request):
+    formato = request.GET.get('formato', 'xlsx')
+    qs = Comprador.objects.prefetch_related('categorias_interes')
+    qs, _ = _aplicar_filtros_comprador(qs, request.GET)
+    qs = qs.distinct().order_by('-creado_en')
+
+    fecha = timezone.localdate().strftime('%Y-%m-%d')
+    if formato == 'whatsapp':
+        contenido = exportacion.a_csv(exportacion.filas_whatsapp(qs))
+        tipo, nombre = 'text/csv; charset=utf-8', f'whatsapp_{fecha}.csv'
+    elif formato == 'csv':
+        contenido = exportacion.a_csv(exportacion.filas_completas(qs))
+        tipo, nombre = 'text/csv; charset=utf-8', f'leads_{fecha}.csv'
+    else:
+        contenido = exportacion.a_excel(exportacion.filas_completas(qs))
+        tipo = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        nombre = f'leads_{fecha}.xlsx'
+    respuesta = HttpResponse(contenido, content_type=tipo)
+    respuesta['Content-Disposition'] = f'attachment; filename="{nombre}"'
+    return respuesta
 
 
 @login_required
@@ -276,7 +353,9 @@ def compradores_envio_masivo(request):
             raise Http404('Producto no válido.')
         producto_interes = get_object_or_404(Producto, pk=producto_id)
         qs = qs.filter(productos_interes=producto_interes)
-    qs = qs.exclude(email='').order_by('nombre_empresa').prefetch_related('productos_interes')
+    qs = qs.exclude(email='').distinct().order_by('nombre_empresa', 'nombre_contacto').prefetch_related(
+        'productos_interes', 'categorias_interes',
+    )
     total_filtrados = qs.count()
     destinatarios = list(qs[:ENVIO_MASIVO_LIMITE])
 
@@ -303,10 +382,7 @@ def compradores_envio_masivo(request):
         'total_filtrados': total_filtrados,
         'limite': ENVIO_MASIVO_LIMITE,
         'plantilla': plantilla,
-        'estados': Comprador.Estado.choices,
-        'fuentes': Comprador.Fuente.choices,
-        'paises': Comprador.objects.exclude(pais='').values_list('pais', flat=True).distinct().order_by('pais'),
-        'sectores': Comprador.objects.exclude(sector='').values_list('sector', flat=True).distinct().order_by('sector'),
+        **_opciones_filtro_comprador(),
         'filtros': filtros,
         'plantillas': PlantillaMensaje.objects.filter(tipo=PlantillaMensaje.Tipo.EMAIL),
         'plantilla_id': plantilla_id,

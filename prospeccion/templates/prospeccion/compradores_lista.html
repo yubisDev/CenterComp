@@ -1,14 +1,26 @@
 {% extends 'base.html' %}
 {% load icons humanize_extra %}
-{% block title %}Compradores{% endblock %}
-{% block page_title %}Compradores potenciales{% endblock %}
+{% block title %}Compradores y leads{% endblock %}
+{% block page_title %}Compradores y leads{% endblock %}
 {% block page_subtitle %}
 <div class="subtitle">{{ total_compradores }} prospecto{{ total_compradores|pluralize }} en tu pipeline</div>
 {% endblock %}
 {% block content %}
 
-<div class="d-flex justify-content-end mb-3">
-    <a href="{% url 'comprador_nuevo' %}" class="btn btn-primary">+ Nuevo comprador</a>
+<div class="d-flex flex-wrap justify-content-end gap-2 mb-3">
+    <a href="{% url 'compradores_importar' %}" class="btn btn-outline-secondary d-inline-flex align-items-center gap-1">{% icon 'upload' size=15 %} Importar</a>
+    <div class="dropdown">
+        <button class="btn btn-outline-secondary dropdown-toggle d-inline-flex align-items-center gap-1" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            {% icon 'download' size=15 %} Exportar{% if total_filtrados != total_compradores %} ({{ total_filtrados }}){% endif %}
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="{% url 'compradores_exportar' %}?formato=xlsx{% if querystring %}&{{ querystring }}{% endif %}">Excel (.xlsx)</a></li>
+            <li><a class="dropdown-item" href="{% url 'compradores_exportar' %}?formato=csv{% if querystring %}&{{ querystring }}{% endif %}">CSV</a></li>
+            <li><hr class="dropdown-divider"></li>
+            <li><a class="dropdown-item" href="{% url 'compradores_exportar' %}?formato=whatsapp{% if querystring %}&{{ querystring }}{% endif %}">Lista para WhatsApp (nombre + número)</a></li>
+        </ul>
+    </div>
+    <a href="{% url 'comprador_nuevo' %}" class="btn btn-primary">+ Nuevo lead</a>
 </div>
 
 <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-2 mb-3">
@@ -26,13 +38,42 @@
 <div class="mb-3"><a href="?{{ querystring_sin_estado }}" class="text-muted-soft small">Ver todos los estados</a></div>
 {% endif %}
 
+{% if resumen_base %}
+<details class="panel resumen-base mb-3"{% if not filtros.q and not filtros.estado and not hay_filtros_extra and not filtros.pais and not filtros.fuente %} open{% endif %}>
+    <summary class="panel-body py-2"><strong>Resumen de la base</strong> <span class="text-muted-soft small">· clic en un dato para filtrar</span></summary>
+    <div class="panel-body pt-0">
+        <div class="row g-3">
+            <div class="col-md-4">
+                <div class="resumen-titulo">Le interesa</div>
+                {% for c in resumen_base.por_categoria %}
+                <a class="resumen-fila" href="?categoria={{ c.pk }}"><span>{{ c.nombre }}</span><strong>{{ c.cantidad }}</strong></a>
+                {% endfor %}
+                <a class="resumen-fila text-muted-soft" href="?categoria=sin"><span>Sin categoría</span><strong>{{ resumen_base.sin_categoria }}</strong></a>
+            </div>
+            <div class="col-md-4">
+                <div class="resumen-titulo">País</div>
+                {% for p in resumen_base.por_pais %}
+                <a class="resumen-fila" href="?pais={{ p.pais|urlencode }}"><span>{{ p.pais }}</span><strong>{{ p.cantidad }}</strong></a>
+                {% empty %}<p class="text-muted-soft small mb-0">Sin datos</p>{% endfor %}
+            </div>
+            <div class="col-md-4">
+                <div class="resumen-titulo">Origen</div>
+                {% for f in resumen_base.por_fuente %}
+                <a class="resumen-fila" href="?fuente={{ f.fuente }}"><span>{{ f.etiqueta }}</span><strong>{{ f.cantidad }}</strong></a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</details>
+{% endif %}
+
 <form method="get" class="filter-bar">
     <div class="row g-2 align-items-end">
         <div class="col-md-4">
             <label class="form-label d-block">Buscar</label>
             <div class="search-field">
                 {% icon 'search' size=16 %}
-                <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="Empresa, país o sector">
+                <input type="text" name="q" value="{{ filtros.q }}" class="form-control form-control-sm" placeholder="Nombre, empresa, teléfono, correo o campaña">
             </div>
         </div>
         <div class="col-md-2">
@@ -72,9 +113,37 @@
             </select>
         </div>
     </div>
-    <div class="mt-2">
+    <div class="row g-2 align-items-end mt-0">
+        <div class="col-md-3">
+            <label class="form-label d-block">Categoría de interés</label>
+            <select name="categoria" class="form-select form-select-sm">
+                <option value="">Todas</option>
+                {% for c in categorias %}
+                    <option value="{{ c.pk }}" {% if filtros.categoria == c.pk|stringformat:'s' %}selected{% endif %}>{{ c.nombre }}</option>
+                {% endfor %}
+                <option value="sin" {% if filtros.categoria == 'sin' %}selected{% endif %}>Sin categoría</option>
+            </select>
+        </div>
+        <div class="col-md-3">
+            <label class="form-label d-block">Campaña</label>
+            <select name="campana" class="form-select form-select-sm">
+                <option value="">Todas</option>
+                {% for c in campanas %}
+                    <option value="{{ c }}" {% if filtros.campana == c %}selected{% endif %}>{{ c }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3">
+            <div class="form-check mb-1">
+                <input class="form-check-input" type="checkbox" name="acepta" value="1" id="filtroAcepta" {% if filtros.acepta == '1' %}checked{% endif %}>
+                <label class="form-check-label" for="filtroAcepta">Solo quienes aceptan promociones</label>
+            </div>
+        </div>
+    </div>
+    <div class="mt-2 d-flex align-items-center gap-2">
         <button type="submit" class="btn btn-outline-primary btn-sm">Filtrar</button>
         <a href="{% url 'compradores_lista' %}" class="btn btn-outline-secondary btn-sm">Limpiar</a>
+        {% if total_filtrados != total_compradores %}<span class="text-muted-soft small ms-1">{{ total_filtrados }} de {{ total_compradores }} coinciden</span>{% endif %}
     </div>
 </form>
 
@@ -83,10 +152,10 @@
         <table class="table table-modern table-sm align-middle mb-0">
             <thead>
                 <tr>
-                    <th>Empresa</th>
+                    <th>Nombre</th>
                     <th>País / Ciudad</th>
-                    <th>Sector</th>
-                    <th>Fuente</th>
+                    <th>Le interesa</th>
+                    <th>Origen</th>
                     <th>Estado</th>
                     <th>Último contacto</th>
                     <th class="text-end">Acciones</th>
@@ -97,12 +166,15 @@
                 <tr>
                     <td>
                         <a class="row-link" href="{% url 'comprador_detalle' comprador.pk %}">{{ comprador.nombre_mostrar }}</a>
+                        {% if comprador.nombre_empresa and comprador.nombre_contacto %}<div class="small text-muted-soft">{{ comprador.nombre_contacto }}</div>{% endif %}
                     </td>
                     <td class="text-muted-soft">
                         {% if comprador.es_internacional %}<span class="intl-mark" title="Comprador internacional">{% icon 'globe' size=14 %}</span>{% endif %}{{ comprador.pais }}{% if comprador.ciudad %} · {{ comprador.ciudad }}{% endif %}
                     </td>
-                    <td>{% if comprador.sector %}<span class="pill pill-muted">{{ comprador.sector }}</span>{% else %}—{% endif %}</td>
-                    <td class="text-muted-soft">{{ comprador.get_fuente_display }}</td>
+                    <td>
+                        {% for cat in comprador.categorias_interes.all %}<span class="pill pill-muted me-1">{{ cat.nombre }}</span>{% empty %}{% if comprador.sector %}<span class="text-muted-soft small">{{ comprador.sector }}</span>{% else %}—{% endif %}{% endfor %}
+                    </td>
+                    <td class="text-muted-soft">{{ comprador.get_fuente_display }}{% if comprador.campana %}<div class="small">{{ comprador.campana }}</div>{% endif %}</td>
                     <td><span class="badge badge-estado badge-{{ comprador.estado }}">{{ comprador.get_estado_display }}</span></td>
                     <td class="text-muted-soft">{{ comprador.fecha_ultimo_contacto|hace }}</td>
                     <td class="text-end">
