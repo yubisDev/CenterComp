@@ -10,7 +10,7 @@ Django 6 + plantillas del servidor + Bootstrap 5.3 (sin SPA). SQLite en local, P
 - **Base unificada de leads:** cada contacto guarda nombre de la persona y/o empresa, origen (WhatsApp, Instagram, anuncio de Meta, página web...), campaña, categorías de interés (vehículos de subasta, excedentes industriales, inmuebles, revestimientos — editables en el admin) y si aceptó recibir promociones. País y teléfono se normalizan al guardar y el teléfono evita duplicados.
 - **Importación unificada:** Excel, CSV o el CSV de Meta Lead Ads; reconoce columnas en español e inglés, detecta categorías por palabras clave y, si el teléfono o correo ya existe, completa el registro en vez de duplicarlo. Plantilla Excel descargable.
 - **Exportación:** lo filtrado a Excel, CSV o lista para WhatsApp (nombre + número con indicativo).
-- **Campaña de WhatsApp:** filtra un grupo (ej. Panamá + revestimientos), arma el mensaje con plantilla y abre cada chat con el texto listo; "Marcar enviado" lo registra en el historial y no se repite.
+- **Campaña de WhatsApp (en el listado de compradores):** se filtra el grupo (ej. Panamá + revestimientos) y se elige una plantilla en "Campaña de WhatsApp"; cada fila abre el chat con el mensaje listo y "Marcar enviado" lo registra en el historial sin repetirse.
 - **Proveedores / consignantes:** mismo esquema que compradores, para quienes le dan inventario a ISYN (incluye chatarreos).
 - **Productos:** inventario con carga masiva CSV/Excel (duplicados detectados por `referencia`), ficha con compradores interesados y dashboard de KPIs.
 - **Búsqueda con IA** (Gemini + Google Search) de compradores y de proveedores: hasta 5 empresas por búsqueda, corre en segundo plano y los resultados se revisan como borrador antes de guardarse.

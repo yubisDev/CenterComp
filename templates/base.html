@@ -58,9 +58,6 @@
             <a href="{% url 'proveedores_buscar_ia' %}" class="{% if request.resolver_match.url_name == 'proveedores_buscar_ia' %}active{% endif %}">
                 <span class="icon">{% icon 'sparkle' size=17 %}</span> Buscar proveedores IA
             </a>
-            <a href="{% url 'compradores_campana_whatsapp' %}" class="{% if request.resolver_match.url_name == 'compradores_campana_whatsapp' %}active{% endif %}">
-                <span class="icon">{% icon 'chat' size=17 %}</span> Campaña WhatsApp
-            </a>
             <a href="{% url 'compradores_envio_masivo' %}" class="{% if request.resolver_match.url_name == 'compradores_envio_masivo' %}active{% endif %}">
                 <span class="icon">{% icon 'mail' size=17 %}</span> Envío masivo correo
             </a>

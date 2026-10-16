@@ -38,7 +38,6 @@ urlpatterns = [
     path('productos/<int:pk>/editar/', views.producto_form, name='producto_editar'),
     path('productos/<int:pk>/eliminar/', views.producto_eliminar, name='producto_eliminar'),
 
-    path('compradores/campana-whatsapp/', views.compradores_campana_whatsapp, name='compradores_campana_whatsapp'),
     path('compradores/campana-whatsapp/registrar/', views.compradores_campana_whatsapp_registrar, name='compradores_campana_whatsapp_registrar'),
     path('compradores/envio-masivo/', views.compradores_envio_masivo, name='compradores_envio_masivo'),
     path('compradores/envio-masivo/enviar/', views.compradores_envio_masivo_enviar, name='compradores_envio_masivo_enviar'),
